@@ -454,6 +454,13 @@ function moveCursor(dc, dr) {
 
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
+  if (!card.hidden) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      cardGo.click();
+    }
+    return;
+  }
   if (event.key === "ArrowLeft") {
     moveCursor(-1, 0);
     event.preventDefault();
@@ -471,8 +478,7 @@ window.addEventListener("keydown", (event) => {
     turnTile(cursor.c, cursor.r);
   } else if (event.key === "Enter") {
     event.preventDefault();
-    if (!card.hidden && mode !== "play") cardGo.click();
-    else beginWalk();
+    beginWalk();
   } else if (event.key === "p" || event.key === "P") {
     pauseBtn.click();
   } else if (event.key === "r" || event.key === "R") {
