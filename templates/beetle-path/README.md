@@ -1,8 +1,6 @@
 # Beetle Path
 
-Turn the stones so their arrows lead the beetle to the flower. Press Go and watch. If the path loops or leaves the board, the beetle comes home and your turns stay.
-
-Click a stone, or use the arrow keys and Space. Enter is Go. P pauses. Reset puts the stones back.
+Arrow stones lead a beetle across a meadow. The flower is the end of the path.
 
 ## Change the game
 
@@ -12,3 +10,6 @@ Edit `config.js`.
 - `start` — `{ c, r }` column and row where the beetle begins. `c` is across, `r` is down the list.
 - `stepSeconds` — how fast the beetle walks
 - `colors` — meadow, stones, the walked path, beetle, flower
+- `sounds` — files for a turn, a step, the flower, a loop, and stepping off. `soundVolume` turns them down
+
+The clips in `sfx/` were rendered with [earshot](https://github.com/learningapp4-create/dailyearshot).

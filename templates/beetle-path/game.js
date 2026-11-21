@@ -22,8 +22,34 @@ const pauseBtn = document.querySelector("#pause");
 const resetBtn = document.querySelector("#reset");
 
 titleEl.textContent = CONFIG.title;
-goalEl.textContent = CONFIG.goalText;
+goalEl.textContent = CONFIG.goalText || "";
 document.title = CONFIG.title;
+
+const clips = new Map();
+for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
+  if (!file) continue;
+  const audio = new Audio(file);
+  audio.preload = "auto";
+  clips.set(name, audio);
+}
+function primeAudio() {
+  const audio = clips.values().next().value;
+  if (!audio) return;
+  audio.volume = 0;
+  audio.play().then(() => {
+    audio.pause();
+    audio.currentTime = 0;
+  }).catch(() => {});
+}
+window.addEventListener("pointerdown", primeAudio, { once: true });
+window.addEventListener("keydown", primeAudio, { once: true });
+function playSound(name) {
+  const audio = clips.get(name);
+  if (!audio) return;
+  const node = audio.cloneNode();
+  node.volume = CONFIG.soundVolume ?? 0.85;
+  node.play().catch(() => {});
+}
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -120,6 +146,7 @@ for (let r = 0; r < height; r += 1) {
     const stone = new THREE.Mesh(stoneGeo, stoneMat.clone());
     stone.position.set(pos.x, 0, pos.z);
     const isFlower = letters[r][c] === "F";
+    if (isFlower) stone.material.color.set(CONFIG.colors.flowerBed);
     const marker = isFlower ? makeFlower() : makeArrow();
     marker.position.set(pos.x, 0.12, pos.z);
     if (!isFlower) marker.rotation.y = DIRS[letters[r][c]].rot;
@@ -149,6 +176,7 @@ eyeR.position.set(-0.07, 0.12, -0.36);
 beetle.add(body, head, eyeL, eyeR);
 beetle.scale.setScalar(0.78);
 scene.add(beetle);
+const flowerTile = tiles.find((tile) => tile.flower);
 
 let cursor = {
   c: Math.max(0, Math.min(width - 1, CONFIG.start.c)),
@@ -195,6 +223,7 @@ function paintCursor() {
     if (tile.visited) color = CONFIG.colors.path;
     if (selected) color = CONFIG.colors.stoneOn;
     tile.stone.material.color.set(color);
+    tile.stone.position.y = selected ? 0.1 : 0;
   }
 }
 
@@ -260,6 +289,7 @@ function turnTile(c, r) {
   const next = ORDER[(ORDER.indexOf(now) + 1) % ORDER.length];
   letters[r][c] = next;
   tile.spin = { from: tile.marker.rotation.y, to: tile.marker.rotation.y - Math.PI / 2, t: 0 };
+  playSound("turn");
   cursor = { c, r };
   paintCursor();
   if (CONFIG.start.c === c && CONFIG.start.r === r && !walk) {
@@ -274,13 +304,16 @@ function endWalk(kind) {
   pauseBtn.textContent = "Pause";
   if (kind === "win") {
     scoreEl.textContent = "Flower";
-    showCard(CONFIG.winTitle, CONFIG.winBody, "Again");
+    playSound("win");
+    showCard(CONFIG.winTitle, CONFIG.winBody || "", "Again");
   } else if (kind === "loop") {
     scoreEl.textContent = "Loop";
-    showCard(CONFIG.loopTitle, CONFIG.loopBody, "Keep going");
+    playSound("loop");
+    showCard(CONFIG.loopTitle, "", "Keep going");
   } else {
     scoreEl.textContent = "Off the path";
-    showCard(CONFIG.offTitle, CONFIG.offBody, "Keep going");
+    playSound("off");
+    showCard(CONFIG.offTitle, "", "Keep going");
   }
 }
 
@@ -358,9 +391,11 @@ function stepWalk(dt) {
       t: 0,
       off: true,
     };
-    beetle.position.set(pos.x, 0.42, pos.z);
+    beetle.position.set(pos.x, 0.34, pos.z + 0.34);
+    playSound("step");
     return;
   }
+  playSound("step");
   walk.moving = {
     from: { c: walk.c, r: walk.r },
     to: { c: nc, r: nr },
@@ -379,6 +414,7 @@ function frame(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   spinMarkers(dt);
+  if (flowerTile) flowerTile.marker.position.y = 0.18 + Math.sin(now * 0.003) * 0.05;
   if (mode === "play") {
     stepWalk(dt);
     finishOffScreen();

@@ -5,8 +5,17 @@
 
 export const CONFIG = {
   title: "Beetle Path",
-  goalText: "Turn stones. Reach the flower.",
+  // Optional one-line label. Leave empty: the arrows, the flower, and Go teach the round.
+  goalText: "",
   stepSeconds: 0.42,
+  soundVolume: 0.85,
+  sounds: {
+    turn: "sfx/turn.webm",
+    step: "sfx/step.webm",
+    win: "sfx/win.webm",
+    loop: "sfx/loop.webm",
+    off: "sfx/off.webm",
+  },
   spacing: 1.38,
 
   rows: [
@@ -22,7 +31,8 @@ export const CONFIG = {
     sky: "#c9ecff",
     meadow: "#7fbf6a",
     stone: "#f3efe2",
-    stoneOn: "#fff4c2",
+    stoneOn: "#ffffff",
+    flowerBed: "#ffd0dc",
     path: "#f6d36a",
     arrow: "#3d4a3a",
     beetle: "#d8453c",
@@ -33,11 +43,9 @@ export const CONFIG = {
   },
 
   readyTitle: "Beetle Path",
-  readyBody: "Turn the stones, then press Go.",
+  readyBody: "",
   winTitle: "The beetle found the flower",
-  winBody: "That path works.",
+  winBody: "",
   loopTitle: "That path loops",
-  loopBody: "Turn a stone and try again.",
   offTitle: "The beetle stepped off",
-  offBody: "Try a different stone.",
 };

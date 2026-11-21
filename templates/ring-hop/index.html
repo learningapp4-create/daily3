@@ -31,6 +31,7 @@
     #score { font-size: 1.5rem; font-weight: 700; }
     #score.pop { animation: pop 0.28s ease; }
     @keyframes pop { 40% { transform: scale(1.14); } }
+    #goal:empty, #card-body:empty { display: none; }
     button {
       pointer-events: auto;
       border: 0;
@@ -66,7 +67,7 @@
   <header>
     <div class="chip">
       <h1 id="title">Ring Hop</h1>
-      <p id="goal">Hop when a star meets the bird.</p>
+      <p id="goal"></p>
     </div>
     <div class="chip" id="score">Stars 0</div>
   </header>
@@ -79,7 +80,7 @@
   <div class="card" id="card">
     <div class="panel">
       <h2 id="card-title">Ring Hop</h2>
-      <p id="card-body">Hop when a star meets the bird.</p>
+      <p id="card-body"></p>
       <button type="button" id="card-go">Go</button>
     </div>
   </div>

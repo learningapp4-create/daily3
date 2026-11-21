@@ -1,8 +1,6 @@
 # Ring Hop
 
-A bird sits on a spinning ring. When a star meets the bird, the button says Catch. Catch enough stars and the moon opens. You can hop back out to catch ones you missed.
-
-Space or the main button. Arrow up hops out. P pauses. R starts again.
+A bird sits on spinning rings. Stars ride the rings, and the moon waits in the middle.
 
 ## Change the game
 
@@ -12,3 +10,6 @@ Edit `config.js`.
 - `catchDegrees` — how close a star must be to count
 - `rings` — outside ring first. `radius`, `speed` (radians per second), `stars` (degrees around the ring)
 - `colors` — sky, rings, stars, bird, moon
+- `sounds` — files for a hop, a catch, and the moon. `soundVolume` turns them down
+
+The clips in `sfx/` were rendered with [earshot](https://github.com/learningapp4-create/dailyearshot).

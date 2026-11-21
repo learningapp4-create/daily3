@@ -29,6 +29,7 @@
     h1 { font-size: 1.7rem; margin: 0; line-height: 1.1; }
     p { font-size: 1.15rem; margin: 2px 0 0; }
     #score { font-size: 1.35rem; font-weight: 700; }
+    #goal:empty, #card-body:empty { display: none; }
     button {
       pointer-events: auto;
       border: 0;
@@ -63,7 +64,7 @@
   <header>
     <div class="chip">
       <h1 id="title">Beetle Path</h1>
-      <p id="goal">Turn stones. Reach the flower.</p>
+      <p id="goal"></p>
     </div>
     <div class="chip" id="score">Ready</div>
   </header>
@@ -76,7 +77,7 @@
   <div class="card" id="card">
     <div class="panel">
       <h2 id="card-title">Beetle Path</h2>
-      <p id="card-body">Turn the stones, then press Go.</p>
+      <p id="card-body"></p>
       <button type="button" id="card-go">Ready</button>
     </div>
   </div>

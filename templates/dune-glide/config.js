@@ -3,7 +3,15 @@
 
 export const CONFIG = {
   title: "Dune Glide",
-  goalText: "Steer to the camp.",
+  // Optional one-line label under the title. Leave empty: the flag, shells, and buttons teach the round.
+  goalText: "",
+  soundVolume: 0.85,
+  sounds: {
+    collect: "sfx/collect.webm",
+    win: "sfx/win.webm",
+    miss: "sfx/miss.webm",
+    off: "sfx/off.webm",
+  },
 
   // How strongly the banks push the marble sideways.
   slide: 14,
@@ -49,9 +57,7 @@ export const CONFIG = {
 
   winTitle: "You made camp",
   missTitle: "Camp is in the middle",
-  missBody: "Let go of the bank so you roll back to the middle.",
-  offTitle: "Try a new line",
-  offBody: "That side leaves the sand.",
+  offTitle: "Off the sand",
   readyTitle: "Dune Glide",
-  readyBody: "Steer to the camp. Shells are a bonus.",
+  readyBody: "",
 };

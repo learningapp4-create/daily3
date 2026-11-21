@@ -15,8 +15,34 @@ const leftBtn = document.querySelector("#left");
 const rightBtn = document.querySelector("#right");
 
 titleEl.textContent = CONFIG.title;
-goalEl.textContent = CONFIG.goalText;
+goalEl.textContent = CONFIG.goalText || "";
 document.title = CONFIG.title;
+
+const clips = new Map();
+for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
+  if (!file) continue;
+  const audio = new Audio(file);
+  audio.preload = "auto";
+  clips.set(name, audio);
+}
+function primeAudio() {
+  const audio = clips.values().next().value;
+  if (!audio) return;
+  audio.volume = 0;
+  audio.play().then(() => {
+    audio.pause();
+    audio.currentTime = 0;
+  }).catch(() => {});
+}
+window.addEventListener("pointerdown", primeAudio, { once: true });
+window.addEventListener("keydown", primeAudio, { once: true });
+function playSound(name) {
+  const audio = clips.get(name);
+  if (!audio) return;
+  const node = audio.cloneNode();
+  node.volume = CONFIG.soundVolume ?? 0.85;
+  node.play().catch(() => {});
+}
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -58,14 +84,28 @@ for (const spotAt of [[0, 1, 0], [0.15, -0.2, 0.95], [-0.9, 0.25, 0.2]]) {
 ball.add(ballBody);
 scene.add(ball);
 
-const shellGeo = new THREE.SphereGeometry(0.5, 12, 10);
 const shellMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell });
+function makeShell() {
+  const group = new THREE.Group();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), shellMat);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.07, 6, 16), shellMat);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = 0.08;
+  group.add(dome, lip);
+  return group;
+}
 const shells = CONFIG.shells.map((spot) => {
-  const mesh = new THREE.Mesh(shellGeo, shellMat);
-  mesh.rotation.x = Math.PI / 2;
+  const mesh = makeShell();
   scene.add(mesh);
   return { ...spot, mesh, got: false };
 });
+
+const shade = new THREE.Mesh(
+  new THREE.CircleGeometry(0.34, 14),
+  new THREE.MeshBasicMaterial({ color: 0x5c4328, transparent: true, opacity: 0.28, depthWrite: false }),
+);
+shade.rotation.x = -Math.PI / 2;
+scene.add(shade);
 
 const flag = new THREE.Group();
 const pole = new THREE.Mesh(
@@ -168,6 +208,7 @@ function resetRound() {
   scoreEl.textContent = shellCountLabel();
   const y = groundY(x, z);
   ball.position.set(x, (y ?? 1) + CONFIG.ballRadius, z);
+  shade.position.set(x, (y ?? 1) + 0.03, z);
   snapCam = true;
   mode = "ready";
   showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
@@ -177,11 +218,14 @@ function finish(kind) {
   mode = "end";
   const shellsLine = shellCountLabel();
   if (kind === "win") {
+    playSound("win");
     showCard(CONFIG.winTitle, shellsLine, "Again");
   } else if (kind === "miss") {
-    showCard(CONFIG.missTitle, `${CONFIG.missBody} ${shellsLine}.`, "Again");
+    playSound("miss");
+    showCard(CONFIG.missTitle, shellsLine, "Again");
   } else {
-    showCard(CONFIG.offTitle, CONFIG.offBody, "Again");
+    playSound("off");
+    showCard(CONFIG.offTitle, "", "Again");
   }
 }
 
@@ -222,6 +266,7 @@ function update(dt) {
     return;
   }
   ball.position.set(x, y + CONFIG.ballRadius, z);
+  shade.position.set(x, y + 0.03, z);
   ball.rotation.x -= (CONFIG.cruise / CONFIG.ballRadius) * dt;
   ball.rotation.z += (vx / CONFIG.ballRadius) * dt;
 
@@ -237,6 +282,7 @@ function update(dt) {
       shellsGot += 1;
       scoreEl.textContent = shellCountLabel();
       popScore();
+      playSound("collect");
     }
   }
 

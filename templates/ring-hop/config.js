@@ -3,8 +3,15 @@
 
 export const CONFIG = {
   title: "Ring Hop",
-  goalText: "Hop when a star meets the bird.",
+  // Optional one-line label. Leave empty: the bird, the stars, and the button teach the round.
+  goalText: "",
   goalStars: 5,
+  soundVolume: 0.85,
+  sounds: {
+    hop: "sfx/hop.webm",
+    catch: "sfx/catch.webm",
+    moon: "sfx/moon.webm",
+  },
   // How close a star must be to the bird, in degrees, to catch it.
   catchDegrees: 50,
   hopSeconds: 0.36,
@@ -30,8 +37,6 @@ export const CONFIG = {
   },
 
   readyTitle: "Ring Hop",
-  readyBody: "Hop when a star meets the bird.",
+  readyBody: "",
   winTitle: "You reached the moon",
-  needText: "Catch a few more, or hop back.",
-  openText: "The moon is open.",
 };
