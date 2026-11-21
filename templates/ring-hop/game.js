@@ -169,20 +169,26 @@ function popScore() {
 
 function updateButtons() {
   const lastRing = ringIndex >= CONFIG.rings.length - 1;
+  const aligned = mode === "play" && !hopping && starIsClose();
+  let text = "Hop in";
+  let dir = "in";
   if (lastRing && moonOpen()) {
-    actBtn.hidden = false;
-    actBtn.textContent = "To the moon";
-    actBtn.dataset.dir = "moon";
+    text = "To the moon";
+    dir = "moon";
+  } else if (aligned) {
+    text = "Catch";
+    dir = lastRing ? "out" : "in";
   } else if (lastRing) {
-    actBtn.hidden = false;
-    actBtn.textContent = "Hop out";
-    actBtn.dataset.dir = "out";
-  } else {
-    actBtn.hidden = false;
-    actBtn.textContent = "Hop in";
-    actBtn.dataset.dir = "in";
+    text = "Hop out";
+    dir = "out";
   }
-  outBtn.hidden = ringIndex === 0 || (lastRing && !moonOpen());
+  if (actBtn.textContent !== text || actBtn.dataset.dir !== dir) {
+    actBtn.hidden = false;
+    actBtn.textContent = text;
+    actBtn.dataset.dir = dir;
+  }
+  const hideOut = ringIndex === 0 || (lastRing && !moonOpen());
+  if (outBtn.hidden !== hideOut) outBtn.hidden = hideOut;
 }
 
 function resetRound() {
@@ -211,10 +217,20 @@ function placeBird(radius, bob) {
   pad.position.set(radius, 0.14, 0);
 }
 
+const starPos = new THREE.Vector3();
+
 function starAngle(star) {
-  const pos = new THREE.Vector3();
-  star.mesh.getWorldPosition(pos);
-  return Math.atan2(pos.z, pos.x);
+  star.mesh.getWorldPosition(starPos);
+  return Math.atan2(starPos.z, starPos.x);
+}
+
+function starIsClose() {
+  const limit = (CONFIG.catchDegrees * Math.PI) / 180;
+  for (const star of stars) {
+    if (star.got || star.ring !== ringIndex) continue;
+    if (Math.abs(starAngle(star)) <= limit) return true;
+  }
+  return false;
 }
 
 function collectAligned() {
@@ -289,6 +305,7 @@ function update(dt) {
     return;
   }
   placeBird(CONFIG.rings[ringIndex].radius, 0);
+  updateButtons();
 }
 
 function frame(now) {

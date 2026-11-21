@@ -22,14 +22,15 @@ export const CONFIG = {
   shellRadius: 0.85,
 
   // x is left/right. z points toward the camp. The camp catches the middle.
+  // A right pair, then a left shell further on, so one steer can take a bank
+  // and still roll back to the middle before camp.
   shells: [
     { x: 0, z: 9 },
-    { x: 0, z: 15 },
-    { x: 0, z: 21 },
-    { x: 2.2, z: 11 },
-    { x: -2.2, z: 13 },
-    { x: 2.2, z: 17 },
-    { x: -2.2, z: 19 },
+    { x: 0, z: 17 },
+    { x: 0, z: 23.3 },
+    { x: 2.15, z: 11.2 },
+    { x: 2.1, z: 12.8 },
+    { x: -1.6, z: 19.6 },
   ],
   camp: { x: 0, z: 24.4, halfWidth: 1.45 },
 

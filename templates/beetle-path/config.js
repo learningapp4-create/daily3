@@ -11,8 +11,8 @@ export const CONFIG = {
 
   rows: [
     "EEFEE",
-    "EENSE",
-    "EENWE",
+    "EEWSE",
+    "EEEWE",
     "EENEE",
     "EEWEE",
   ],

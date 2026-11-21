@@ -1,8 +1,8 @@
 # Ring Hop
 
-A bird sits on a spinning ring. Press Hop in when a star meets the bird. Catch enough stars and the moon opens. You can hop back out to catch ones you missed.
+A bird sits on a spinning ring. When a star meets the bird, the button says Catch. Catch enough stars and the moon opens. You can hop back out to catch ones you missed.
 
-Space or Hop in. Arrow up hops out. P pauses. R starts again.
+Space or the main button. Arrow up hops out. P pauses. R starts again.
 
 ## Change the game
 
