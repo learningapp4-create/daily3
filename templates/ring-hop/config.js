@@ -18,7 +18,8 @@ export const CONFIG = {
 
   colors: {
     sky: "#1c1b4a",
-    ring: "#9ebfff",
+    ring: "#7ea2d6",
+    ringOn: "#f6fbff",
     star: "#ffd45a",
     bird: "#ffe7a3",
     beak: "#ff8a3d",
@@ -31,6 +32,6 @@ export const CONFIG = {
   readyTitle: "Ring Hop",
   readyBody: "Hop when a star meets the bird.",
   winTitle: "You reached the moon",
-  needText: "Catch a few more stars.",
+  needText: "Catch a few more, or hop back.",
   openText: "The moon is open.",
 };

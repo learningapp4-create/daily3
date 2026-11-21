@@ -42,18 +42,19 @@ const moon = new THREE.Mesh(
 );
 scene.add(moon);
 
-const ringMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.ring });
-const starGeo = new THREE.OctahedronGeometry(0.2, 0);
+const starGeo = new THREE.OctahedronGeometry(0.26, 0);
 const starMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.star });
 const ringGroups = [];
+const ringMeshes = [];
 const stars = [];
 
 CONFIG.rings.forEach((ring, index) => {
   const group = new THREE.Group();
   const mesh = new THREE.Mesh(
     new THREE.TorusGeometry(ring.radius, 0.075, 8, 28),
-    ringMat,
+    new THREE.MeshLambertMaterial({ color: CONFIG.colors.ring }),
   );
+  ringMeshes.push(mesh);
   mesh.rotation.x = Math.PI / 2;
   group.add(mesh);
   for (const deg of ring.stars) {
@@ -93,9 +94,10 @@ bird.add(body, head, beak, wingL, wingR);
 scene.add(bird);
 
 const pad = new THREE.Mesh(
-  new THREE.SphereGeometry(0.1, 8, 8),
+  new THREE.TorusGeometry(0.46, 0.05, 6, 18),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.pad }),
 );
+pad.rotation.x = Math.PI / 2;
 scene.add(pad);
 
 let mode = "ready";
@@ -148,7 +150,21 @@ function hideCard() {
 
 function updateGoal() {
   if (mode !== "play") return;
-  goalEl.textContent = moonOpen() ? CONFIG.openText : CONFIG.needText;
+  if (moonOpen()) goalEl.textContent = CONFIG.openText;
+  else if (starsGot === 0) goalEl.textContent = CONFIG.goalText;
+  else goalEl.textContent = CONFIG.needText;
+}
+
+function paintRings() {
+  ringMeshes.forEach((mesh, index) => {
+    mesh.material.color.set(index === ringIndex ? CONFIG.colors.ringOn : CONFIG.colors.ring);
+  });
+}
+
+function popScore() {
+  scoreEl.classList.remove("pop");
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add("pop");
 }
 
 function updateButtons() {
@@ -185,13 +201,14 @@ function resetRound() {
   scoreEl.textContent = scoreText();
   goalEl.textContent = CONFIG.goalText;
   updateButtons();
+  paintRings();
   placeBird(CONFIG.rings[0].radius, 0);
   showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
 }
 
 function placeBird(radius, bob) {
   bird.position.set(radius, 0.32 + bob, 0);
-  pad.position.set(radius, 0.12, 0);
+  pad.position.set(radius, 0.14, 0);
 }
 
 function starAngle(star) {
@@ -215,6 +232,7 @@ function collectAligned() {
   }
   if (caught) {
     scoreEl.textContent = scoreText();
+    popScore();
     if (moonOpen()) moon.material.color.set(CONFIG.colors.moon);
     updateGoal();
     updateButtons();
@@ -264,6 +282,7 @@ function update(dt) {
       }
       ringIndex = hopping.dest;
       hopping = null;
+      paintRings();
       updateButtons();
       updateGoal();
     }
@@ -291,7 +310,7 @@ cardGo.addEventListener("click", () => {
   if (mode === "ready") {
     hideCard();
     mode = "play";
-    goalEl.textContent = CONFIG.needText;
+    updateGoal();
     updateButtons();
     return;
   }

@@ -147,6 +147,7 @@ const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
 eyeL.position.set(0.07, 0.12, -0.36);
 eyeR.position.set(-0.07, 0.12, -0.36);
 beetle.add(body, head, eyeL, eyeR);
+beetle.scale.setScalar(0.78);
 scene.add(beetle);
 
 let cursor = {
@@ -188,14 +189,18 @@ function tileAt(c, r) {
 
 function paintCursor() {
   for (const tile of tiles) {
-    const on = tile.c === cursor.c && tile.r === cursor.r && !tile.flower;
-    tile.stone.material.color.set(on ? CONFIG.colors.stoneOn : CONFIG.colors.stone);
+    if (tile.flower) continue;
+    const selected = mode !== "play" && tile.c === cursor.c && tile.r === cursor.r;
+    let color = CONFIG.colors.stone;
+    if (tile.visited) color = CONFIG.colors.path;
+    if (selected) color = CONFIG.colors.stoneOn;
+    tile.stone.material.color.set(color);
   }
 }
 
-function placeBeetle(c, r) {
+function placeBeetle(c, r, lift = 0) {
   const pos = tileXZ(c, r);
-  beetle.position.set(pos.x, 0.42, pos.z);
+  beetle.position.set(pos.x, 0.34 + lift, pos.z + 0.34);
 }
 
 function showCard(title, body, label) {
@@ -214,7 +219,11 @@ function restoreStones() {
     for (let c = 0; c < width; c += 1) {
       letters[r][c] = initial[r][c];
       const tile = tileAt(c, r);
-      if (tile && !tile.flower) tile.marker.rotation.y = DIRS[letters[r][c]].rot;
+      if (tile && !tile.flower) {
+        tile.marker.rotation.y = DIRS[letters[r][c]].rot;
+        tile.spin = null;
+        tile.visited = false;
+      }
     }
   }
 }
@@ -250,7 +259,7 @@ function turnTile(c, r) {
   const now = letters[r][c];
   const next = ORDER[(ORDER.indexOf(now) + 1) % ORDER.length];
   letters[r][c] = next;
-  tile.marker.rotation.y = DIRS[next].rot;
+  tile.spin = { from: tile.marker.rotation.y, to: tile.marker.rotation.y - Math.PI / 2, t: 0 };
   cursor = { c, r };
   paintCursor();
   if (CONFIG.start.c === c && CONFIG.start.r === r && !walk) {
@@ -286,6 +295,8 @@ function beginWalk() {
   paused = false;
   pauseBtn.textContent = "Pause";
   seen = new Set();
+  for (const tile of tiles) tile.visited = false;
+  paintCursor();
   const start = {
     c: Math.max(0, Math.min(width - 1, CONFIG.start.c)),
     r: Math.max(0, Math.min(height - 1, CONFIG.start.r)),
@@ -305,7 +316,7 @@ function stepWalk(dt) {
       walk.moving.from.c + (walk.moving.to.c - walk.moving.from.c) * ease,
       walk.moving.from.r + (walk.moving.to.r - walk.moving.from.r) * ease,
     );
-    beetle.position.set(pos.x, 0.42 + Math.sin(Math.PI * u) * 0.18, pos.z);
+    beetle.position.set(pos.x, 0.34 + Math.sin(Math.PI * u) * 0.16, pos.z + 0.34);
     if (u >= 1) {
       walk.c = walk.moving.to.c;
       walk.r = walk.moving.to.r;
@@ -327,6 +338,9 @@ function stepWalk(dt) {
     return;
   }
   seen.add(key);
+  const stepped = tileAt(walk.c, walk.r);
+  if (stepped) stepped.visited = true;
+  paintCursor();
   const letter = letters[walk.r]?.[walk.c];
   const dir = DIRS[letter];
   if (!dir) {
@@ -364,6 +378,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
+  spinMarkers(dt);
   if (mode === "play") {
     stepWalk(dt);
     finishOffScreen();
@@ -381,6 +396,16 @@ canvas.addEventListener("pointerdown", (event) => {
   const { c, r } = hits[0].object.userData;
   turnTile(c, r);
 });
+
+function spinMarkers(dt) {
+  for (const tile of tiles) {
+    if (!tile.spin) continue;
+    tile.spin.t += dt;
+    const u = Math.min(1, tile.spin.t / 0.16);
+    tile.marker.rotation.y = tile.spin.from + (tile.spin.to - tile.spin.from) * u;
+    if (u >= 1) tile.spin = null;
+  }
+}
 
 function moveCursor(dc, dr) {
   let c = cursor.c + dc;

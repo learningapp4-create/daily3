@@ -23,6 +23,7 @@ export const CONFIG = {
     meadow: "#7fbf6a",
     stone: "#f3efe2",
     stoneOn: "#fff4c2",
+    path: "#f6d36a",
     arrow: "#3d4a3a",
     beetle: "#d8453c",
     eye: "#241c14",

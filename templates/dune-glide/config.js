@@ -12,7 +12,7 @@ export const CONFIG = {
   // Slows sideways drift. Higher settles sooner.
   drag: 1.15,
   // Metres per second along the dune.
-  cruise: 3.05,
+  cruise: 2.15,
   // How far apart the two height samples are when reading the slope.
   slopeSpan: 0.07,
   maxSideSpeed: 4,
@@ -23,13 +23,13 @@ export const CONFIG = {
 
   // x is left/right. z points toward the camp. The camp catches the middle.
   shells: [
-    { x: 0, z: 5 },
-    { x: 0, z: 12 },
-    { x: 0, z: 19 },
-    { x: 2.2, z: 8 },
-    { x: -2.2, z: 10 },
-    { x: 2.2, z: 16 },
-    { x: -2.2, z: 18 },
+    { x: 0, z: 9 },
+    { x: 0, z: 15 },
+    { x: 0, z: 21 },
+    { x: 2.2, z: 11 },
+    { x: -2.2, z: 13 },
+    { x: 2.2, z: 17 },
+    { x: -2.2, z: 19 },
   ],
   camp: { x: 0, z: 24.4, halfWidth: 1.45 },
 
@@ -40,7 +40,8 @@ export const CONFIG = {
     ground: "#c4a36a",
     sand: "#e7c98a",
     ball: "#f4f7fb",
-    shell: "#1f9d8a",
+    ballSpot: "#7ec8e3",
+    shell: "#12c4a8",
     camp: "#e23d3d",
     flag: "#fff4d6",
   },

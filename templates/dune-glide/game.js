@@ -43,13 +43,22 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.02;
 scene.add(ground);
 
-const ball = new THREE.Mesh(
+const ball = new THREE.Group();
+const ballBody = new THREE.Mesh(
   new THREE.SphereGeometry(CONFIG.ballRadius, 16, 12),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.ball }),
 );
+const spotGeo = new THREE.SphereGeometry(CONFIG.ballRadius * 0.34, 8, 8);
+const spotMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.ballSpot });
+for (const spotAt of [[0, 1, 0], [0.15, -0.2, 0.95], [-0.9, 0.25, 0.2]]) {
+  const spot = new THREE.Mesh(spotGeo, spotMat);
+  spot.position.set(spotAt[0], spotAt[1], spotAt[2]).normalize().multiplyScalar(CONFIG.ballRadius * 0.82);
+  ball.add(spot);
+}
+ball.add(ballBody);
 scene.add(ball);
 
-const shellGeo = new THREE.SphereGeometry(0.32, 12, 10);
+const shellGeo = new THREE.SphereGeometry(0.5, 12, 10);
 const shellMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell });
 const shells = CONFIG.shells.map((spot) => {
   const mesh = new THREE.Mesh(shellGeo, shellMat);
@@ -74,7 +83,7 @@ flag.scale.setScalar(1.7);
 scene.add(flag);
 
 const gate = new THREE.Mesh(
-  new THREE.TorusGeometry(CONFIG.camp.halfWidth, 0.055, 6, 22),
+  new THREE.TorusGeometry(CONFIG.camp.halfWidth, 0.1, 8, 24),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.camp }),
 );
 gate.rotation.x = Math.PI / 2;
@@ -116,7 +125,8 @@ function groundY(px, pz) {
 function placeProps() {
   for (const shell of shells) {
     const y = groundY(shell.x, shell.z);
-    shell.mesh.position.set(shell.x, (y ?? 1) + 0.42, shell.z);
+    shell.baseY = (y ?? 1) + 0.62;
+    shell.mesh.position.set(shell.x, shell.baseY, shell.z);
   }
   const campY = groundY(CONFIG.camp.x, CONFIG.camp.z) ?? 1;
   flag.position.set(CONFIG.camp.x, campY, CONFIG.camp.z);
@@ -125,6 +135,12 @@ function placeProps() {
 
 function shellCountLabel() {
   return `Shells ${shellsGot}/${shells.length}`;
+}
+
+function popScore() {
+  scoreEl.classList.remove("pop");
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add("pop");
 }
 
 function showCard(title, body, label) {
@@ -206,9 +222,13 @@ function update(dt) {
     return;
   }
   ball.position.set(x, y + CONFIG.ballRadius, z);
+  ball.rotation.x -= (CONFIG.cruise / CONFIG.ballRadius) * dt;
+  ball.rotation.z += (vx / CONFIG.ballRadius) * dt;
 
+  const bob = performance.now() * 0.004;
   for (const shell of shells) {
     if (shell.got) continue;
+    shell.mesh.position.y = shell.baseY + Math.sin(bob + shell.z) * 0.1;
     const dx = x - shell.x;
     const dz = z - shell.z;
     if (dx * dx + dz * dz <= CONFIG.shellRadius * CONFIG.shellRadius) {
@@ -216,8 +236,7 @@ function update(dt) {
       shell.mesh.visible = false;
       shellsGot += 1;
       scoreEl.textContent = shellCountLabel();
-    } else {
-      shell.mesh.rotation.z += dt * 1.4;
+      popScore();
     }
   }
 

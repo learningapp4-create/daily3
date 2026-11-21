@@ -11,4 +11,4 @@ Edit `config.js`.
 - `rows` — one string per row. The first row is the far side. `N` `E` `S` `W` are arrows. `F` is the flower.
 - `start` — `{ c, r }` column and row where the beetle begins. `c` is across, `r` is down the list.
 - `stepSeconds` — how fast the beetle walks
-- `colors` — meadow, stones, beetle, flower
+- `colors` — meadow, stones, the walked path, beetle, flower
