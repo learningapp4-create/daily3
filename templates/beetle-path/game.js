@@ -168,38 +168,41 @@ for (let r = 0; r < height; r += 1) {
 
 const beetle = new THREE.Group();
 const shellMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.beetle });
-const darkMat = new THREE.MeshLambertMaterial({ color: "#2a211c" });
-const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12), shellMat);
-abdomen.scale.set(0.78, 0.5, 1.2);
-abdomen.position.set(0, 0.1, 0.12);
-const thorax = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), shellMat);
-thorax.scale.set(0.9, 0.55, 0.72);
-thorax.position.set(0, 0.11, -0.1);
-const seam = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.05, 0.4), darkMat);
-seam.position.set(0, 0.22, 0.1);
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), darkMat);
-head.scale.set(1.05, 0.72, 0.9);
-head.position.set(0, 0.1, -0.28);
-const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
+const darkMat = new THREE.MeshLambertMaterial({ color: "#241810" });
+const elytraGeo = new THREE.SphereGeometry(0.22, 12, 10);
+for (const side of [-1, 1]) {
+  const wing = new THREE.Mesh(elytraGeo, shellMat);
+  wing.scale.set(0.42, 0.34, 1.7);
+  wing.position.set(side * 0.085, 0.12, 0.12);
+  beetle.add(wing);
+}
+const seam = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.045, 0.7), darkMat);
+seam.position.set(0, 0.2, 0.12);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), darkMat);
+head.scale.set(1.05, 0.62, 0.85);
+head.position.set(0, 0.11, -0.32);
+const eyeGeo = new THREE.SphereGeometry(0.04, 8, 8);
 const eyeMat = new THREE.MeshLambertMaterial({ color: "#fff6ea" });
 const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
 const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-eyeL.position.set(0.06, 0.16, -0.36);
-eyeR.position.set(-0.06, 0.16, -0.36);
-const antennaGeo = new THREE.BoxGeometry(0.018, 0.018, 0.2);
-const antennaL = new THREE.Mesh(antennaGeo, darkMat);
-const antennaR = new THREE.Mesh(antennaGeo, darkMat);
-antennaL.position.set(0.08, 0.18, -0.46);
-antennaR.position.set(-0.08, 0.18, -0.46);
-antennaL.rotation.y = 0.55;
-antennaR.rotation.y = -0.55;
-const legGeo = new THREE.BoxGeometry(0.2, 0.028, 0.045);
-beetle.add(abdomen, thorax, seam, head, eyeL, eyeR, antennaL, antennaR);
+eyeL.position.set(0.07, 0.16, -0.4);
+eyeR.position.set(-0.07, 0.16, -0.4);
+beetle.add(seam, head, eyeL, eyeR);
+for (const side of [-1, 1]) {
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 4), darkMat);
+  ant.rotation.x = Math.PI / 2;
+  ant.rotation.z = side * 0.65;
+  ant.position.set(side * 0.14, 0.16, -0.52);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), darkMat);
+  tip.position.set(side * 0.24, 0.16, -0.64);
+  beetle.add(ant, tip);
+}
+const legGeo = new THREE.BoxGeometry(0.28, 0.04, 0.055);
 for (let i = 0; i < 3; i += 1) {
   for (const side of [-1, 1]) {
     const leg = new THREE.Mesh(legGeo, darkMat);
-    leg.position.set(side * 0.22, 0.05, -0.06 + i * 0.13);
-    leg.rotation.z = side * -0.35;
+    leg.position.set(side * 0.28, 0.05, 0.0 + i * 0.16);
+    leg.rotation.z = side * -0.55;
     beetle.add(leg);
   }
 }

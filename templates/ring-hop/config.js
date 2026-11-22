@@ -32,13 +32,13 @@ export const CONFIG = {
     },
     {
       goalStars: 5,
-      hopSeconds: 0.42,
-      walkSpeed: 1.05,
+      hopSeconds: 0.48,
+      walkSpeed: 0.95,
       rings: [
-        { radius: 5.5, speed: 0.38, stars: [20, 140, 250] },
-        { radius: 4.25, speed: -0.32, stars: [80, 200, 310] },
-        { radius: 3.05, speed: 0.42, stars: [40, 170, 280] },
-        { radius: 1.95, speed: -0.28, stars: [110, 250] },
+        { radius: 5.5, speed: 0.26, stars: [24, 150, 270] },
+        { radius: 4.25, speed: -0.22, stars: [70, 190, 310] },
+        { radius: 3.05, speed: 0.24, stars: [50, 200] },
+        { radius: 1.95, speed: -0.18, stars: [120, 280] },
       ],
     },
     {

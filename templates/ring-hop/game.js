@@ -137,9 +137,11 @@ function layStars() {
     for (const deg of ring.stars) {
       const star = new THREE.Mesh(starGeo, starMat);
       const a = (deg * Math.PI) / 180;
-      star.position.set(Math.cos(a) * ring.radius, 0.22, Math.sin(a) * ring.radius);
+      const x = Math.cos(a) * ring.radius;
+      const z = Math.sin(a) * ring.radius;
+      star.position.set(x, 0.22, z);
       ringGroups[index].add(star);
-      stars.push({ mesh: star, ring: index, got: false });
+      stars.push({ mesh: star, ring: index, got: false, x, z });
     }
   });
 }
@@ -382,11 +384,16 @@ function dressStars(dt) {
   for (const star of stars) {
     if (star.got) continue;
     if (star.boop) star.boop = Math.max(0, star.boop - dt * 2.2);
+    star.mesh.position.x = star.x;
+    star.mesh.position.z = star.z;
     const gap = star.ring === ringIndex ? starGap(star) : Infinity;
     const near = gap <= limit;
-    const scale = (near ? 2.6 : 1) + (star.boop || 0) * 0.7;
-    star.mesh.scale.setScalar(scale);
-    star.mesh.position.y = 0.22 + (near ? 0.42 : 0) + (star.boop || 0) * 0.25;
+    const len = Math.hypot(star.x, star.z) || 1;
+    const aside = near ? 1.05 : 0;
+    star.mesh.scale.setScalar((near ? 1.15 : 1) + (star.boop || 0) * 0.15);
+    star.mesh.position.x = star.x + (-star.z / len) * aside;
+    star.mesh.position.z = star.z + (star.x / len) * aside;
+    star.mesh.position.y = 0.22 + (star.boop || 0) * 0.08;
     if (near && gap < markedGap) {
       marked = star;
       markedGap = gap;
