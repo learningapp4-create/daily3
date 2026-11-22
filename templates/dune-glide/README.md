@@ -11,6 +11,7 @@ Edit `config.js`.
 - `backTap` — how far one tap of Back rolls the marble up the dune
 - `easeSeconds` — how long the marble takes to reach cruise speed at the start
 - `goalShells` — how many shells the camp counts as a win
+- `shellsTitle` — the card when those shells are still out
 - `retreat` — how far the ball rolls back up the dune if shells are still out
 - `steer` and `slide` — how hard you push, and how hard the banks push back
 - `shells` — `{ x, z }` spots. `x` is left/right, `z` points toward the camp

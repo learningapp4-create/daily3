@@ -63,7 +63,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.sky);
-const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 80);
+const camera = new THREE.PerspectiveCamera(52, 1, 0.45, 80);
 camera.position.set(0, 5.2, 0.6);
 camera.lookAt(0, 1.2, 7);
 
@@ -100,22 +100,19 @@ const shellRidgeMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell
 const shellMouthMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shellMouth });
 function makeShell() {
   const group = new THREE.Group();
-  const tilt = -1.05;
-  const fan = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.2, 9), shellMat);
-  fan.rotation.x = tilt;
-  fan.position.set(0, 0.34, 0);
-  const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.36, 9), shellMouthMat);
-  mouth.rotation.x = tilt;
-  mouth.position.set(0, 0.32, -0.12);
-  group.add(fan, mouth);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), shellMat);
+  body.scale.set(1.15, 0.72, 0.95);
+  body.position.y = 0.32;
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), shellMouthMat);
+  mouth.position.set(0, 0.26, -0.3);
+  group.add(body, mouth);
   for (let i = -3; i <= 3; i += 1) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.045, 0.5), shellRidgeMat);
-    rib.position.set(i * 0.11, 0.46, 0);
-    rib.rotation.x = tilt;
-    rib.rotation.y = i * 0.14;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.08, 0.5), shellRidgeMat);
+    rib.position.set(i * 0.09, 0.52, 0.02);
+    rib.rotation.y = i * 0.1;
     group.add(rib);
   }
-  group.scale.setScalar(1.85);
+  group.scale.setScalar(1.7);
   return group;
 }
 const shells = CONFIG.shells.map((spot) => {
@@ -250,6 +247,7 @@ function resetRound() {
   pauseBtn.textContent = "Pause";
   for (const shell of shells) {
     shell.got = false;
+    shell.missed = false;
     shell.mesh.visible = true;
   }
   scoreEl.textContent = shellCountLabel();
@@ -269,7 +267,8 @@ function finish(kind) {
     showCard(CONFIG.winTitle, shellsLine, "Again");
   } else if (kind === "miss") {
     playSound("miss");
-    showCard(CONFIG.missTitle, shellsLine, "Again");
+    const short = shellsGot < (CONFIG.goalShells ?? shells.length);
+    showCard(short ? (CONFIG.shellsTitle || "Missed the shells") : CONFIG.missTitle, shellsLine, "Again");
   } else {
     playSound("off");
     showCard(CONFIG.offTitle, "", "Again");
@@ -371,11 +370,17 @@ function update(dt) {
     const dz = z - shell.z;
     if (dx * dx + dz * dz <= CONFIG.shellRadius * CONFIG.shellRadius) {
       shell.got = true;
+      shell.missed = false;
       shell.mesh.visible = false;
       shellsGot += 1;
       scoreEl.textContent = shellCountLabel();
+      if (goalEl.textContent === "Miss") goalEl.textContent = CONFIG.goalText || "";
       popScore();
       playSound("collect");
+    } else if (!shell.missed && along > 0 && z > shell.z + CONFIG.shellRadius) {
+      shell.missed = true;
+      goalEl.textContent = "Miss";
+      playSound("miss");
     }
   }
 
@@ -388,7 +393,17 @@ function frameCamera(dt, snap) {
   const desired = new THREE.Vector3(x * 0.4, y + cam.up, camZ);
   if (snap) camera.position.copy(desired);
   else camera.position.lerp(desired, 1 - Math.exp(-4 * dt));
-  camera.lookAt(x * 0.15, y + cam.lookUp, z + cam.lookAhead);
+  camera.lookAt(x * 0.15, y + cam.lookUp - 0.9, z + cam.lookAhead);
+  for (const shell of shells) {
+    if (shell.got) {
+      shell.mesh.visible = false;
+      continue;
+    }
+    const dx = camera.position.x - shell.mesh.position.x;
+    const dy = camera.position.y - shell.mesh.position.y;
+    const dz = camera.position.z - shell.mesh.position.z;
+    shell.mesh.visible = dx * dx + dy * dy + dz * dz > 3.3 * 3.3;
+  }
 }
 
 function frame(now) {

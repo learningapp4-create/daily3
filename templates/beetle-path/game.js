@@ -258,6 +258,7 @@ function paintCursor() {
     else if (selected) color = CONFIG.colors.stoneOn;
     tile.stone.material.color.set(color);
     tile.stone.position.y = tile.wrong ? 0.16 : selected ? 0.1 : 0;
+    tile.marker.visible = !tile.wrong;
     if (tile.marker.userData.mat) {
       tile.marker.userData.mat.color.set(tile.wrong ? "#fffaf0" : CONFIG.colors.arrow);
     }
@@ -266,7 +267,10 @@ function paintCursor() {
 
 function placeBeetle(c, r, lift = 0) {
   const pos = tileXZ(c, r);
-  beetle.position.set(pos.x, 0.34 + lift, pos.z + 0.34);
+  const tile = tileAt(c, r);
+  const onWrong = Boolean(tile && tile.wrong);
+  beetle.scale.setScalar(0.78);
+  beetle.position.set(pos.x, (onWrong ? 0.52 : 0.34) + lift, onWrong ? pos.z : pos.z + 0.34);
 }
 
 function showCard(title, body, label) {
@@ -337,10 +341,12 @@ function turnTile(c, r) {
   const next = ORDER[(ORDER.indexOf(now) + 1) % ORDER.length];
   turns.push({ c, r });
   letters[r][c] = next;
+  tile.wrong = false;
   tile.spin = { from: tile.marker.rotation.y, to: tile.marker.rotation.y - Math.PI / 2, t: 0 };
   playSound("turn");
   cursor = { c, r };
   paintCursor();
+  placeBeetle(c, r);
   if (CONFIG.start.c === c && CONFIG.start.r === r && !walk) {
     beetle.rotation.y = DIRS[next].rot;
   }
@@ -368,8 +374,8 @@ function endWalk(kind, at) {
   hideCard();
   if (spot && tileAt(spot.c, spot.r)) {
     cursor = { c: spot.c, r: spot.r };
-    placeBeetle(spot.c, spot.r);
     markWrong(spot);
+    placeBeetle(spot.c, spot.r);
   }
   scoreEl.textContent = kind === "loop" ? "Loop" : "Off the path";
   playSound(kind === "loop" ? "loop" : "off");

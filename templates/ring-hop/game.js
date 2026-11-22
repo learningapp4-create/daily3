@@ -141,7 +141,7 @@ function layStars() {
       const z = Math.sin(a) * ring.radius;
       star.position.set(x, 0.22, z);
       ringGroups[index].add(star);
-      stars.push({ mesh: star, ring: index, got: false, x, z });
+      stars.push({ mesh: star, ring: index, got: false, earned: false, wasClose: null, x, z });
     }
   });
 }
@@ -290,7 +290,7 @@ function popScore() {
 
 function updateButtons() {
   const lastRing = ringIndex >= rings().length - 1;
-  const aligned = mode === "play" && !hopping && starIsClose();
+  const aligned = mode === "play" && !hopping && earned && starIsClose();
   catchBtn.classList.toggle("ready", aligned);
   outBtn.hidden = ringIndex === 0;
   const showMoon = mode === "play" && moonOpen();
@@ -306,6 +306,9 @@ function resetRound() {
   hopping = null;
   birdTheta = 0;
   faceSign = 1;
+  earned = false;
+  prevTheta = null;
+  missUntil = 0;
   walkKeys.left = false;
   walkKeys.right = false;
   pauseBtn.textContent = "Pause";
@@ -323,6 +326,9 @@ function resetRound() {
 
 let birdTheta = 0;
 let faceSign = 1;
+let earned = false;
+let prevTheta = null;
+let missUntil = 0;
 const walkKeys = { left: false, right: false };
 
 function placeBird(radius, bob) {
@@ -341,8 +347,7 @@ function pulsePad(on) {
 const starPos = new THREE.Vector3();
 
 function starAngle(star) {
-  star.mesh.getWorldPosition(starPos);
-  return Math.atan2(starPos.z, starPos.x);
+  return Math.atan2(star.z, star.x) + ringGroups[star.ring].rotation.y;
 }
 
 function angleDelta(a, b) {
@@ -385,6 +390,7 @@ function nearestStar() {
 
 function takeStar(star) {
   star.got = true;
+  star.earned = false;
   star.mesh.visible = false;
   starsGot += 1;
   scoreEl.textContent = scoreText();
@@ -397,18 +403,64 @@ function takeStar(star) {
   updateButtons();
 }
 
+function showMiss() {
+  goalEl.textContent = "Miss";
+  missUntil = performance.now() + 800;
+}
+
+function refreshAim() {
+  const limit = catchLimit();
+  const moved = prevTheta != null && Math.abs(angleDelta(birdTheta, prevTheta)) > 0.0001;
+  let any = false;
+  for (const star of stars) {
+    if (star.got || star.ring !== ringIndex) {
+      star.earned = false;
+      if (star.ring !== ringIndex) star.wasClose = null;
+      continue;
+    }
+    const close = starGap(star) <= limit;
+    if (star.wasClose == null) star.wasClose = close;
+    if (!close) {
+      star.wasClose = false;
+      star.earned = false;
+    } else if (!star.wasClose && moved) {
+      star.earned = true;
+      star.wasClose = true;
+    } else {
+      star.wasClose = true;
+    }
+    if (star.earned && close) any = true;
+  }
+  earned = any;
+  prevTheta = birdTheta;
+  if (missUntil && performance.now() > missUntil) {
+    missUntil = 0;
+    if (goalEl.textContent === "Miss") goalEl.textContent = CONFIG.goalText || `Level ${levelIndex + 1}`;
+  }
+}
+
 function collectAligned() {
   if (mode !== "play" || paused || hopping) return;
   const limit = catchLimit();
+  if (!earned) {
+    showMiss();
+    const near = nearestStar();
+    if (near) near.boop = 1;
+    return;
+  }
   let caught = false;
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (starGap(star) <= limit) {
+    if (star.earned && starGap(star) <= limit) {
       takeStar(star);
       caught = true;
     }
   }
-  if (caught) return;
+  if (caught) {
+    earned = false;
+    return;
+  }
+  showMiss();
   const near = nearestStar();
   if (near) near.boop = 1;
 }
@@ -431,7 +483,7 @@ function dressStars(dt) {
     star.mesh.position.x = star.x;
     star.mesh.position.z = star.z;
     const gap = star.ring === ringIndex ? starGap(star) : Infinity;
-    const near = gap <= limit;
+    const near = Boolean(star.earned) && gap <= limit;
     const len = Math.hypot(star.x, star.z) || 1;
     const aside = near ? 1.05 : 0;
     star.mesh.scale.setScalar((near ? 1.15 : 1) + (star.boop || 0) * 0.15);
@@ -505,12 +557,14 @@ function update(dt) {
     placeBird(radius, 0);
     pulsePad(false);
     dressStars(dt);
+    if (mode === "play") refreshAim();
     return;
   }
   walk(dt);
   for (let i = 0; i < ringGroups.length; i += 1) {
     ringGroups[i].rotation.y += rings()[i].speed * dt;
   }
+  refreshAim();
   if (hopping) {
     hopping.t += dt;
     const u = Math.min(1, hopping.t / level().hopSeconds);
@@ -534,7 +588,7 @@ function update(dt) {
     return;
   }
   placeBird(rings()[ringIndex].radius, 0);
-  pulsePad(starIsClose());
+  pulsePad(earned && starIsClose());
   dressStars(dt);
   updateButtons();
 }

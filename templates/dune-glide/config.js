@@ -70,6 +70,7 @@ export const CONFIG = {
 
   winTitle: "You made camp",
   missTitle: "Camp is in the middle",
+  shellsTitle: "Missed the shells",
   offTitle: "Off the sand",
   readyTitle: "Dune Glide",
   readyBody: "",

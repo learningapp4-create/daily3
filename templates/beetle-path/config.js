@@ -19,11 +19,11 @@ export const CONFIG = {
   spacing: 1.38,
 
   rows: [
-    "EEFEW",
+    "EEFEE",
     "NNNNN",
     "NNNNN",
     "NNNNN",
-    "EENEW",
+    "EEWEE",
   ],
   start: { c: 2, r: 4 },
 
