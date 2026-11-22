@@ -31,7 +31,7 @@ export const CONFIG = {
     sky: "#c9ecff",
     meadow: "#7fbf6a",
     stone: "#f3efe2",
-    stoneOn: "#ffffff",
+    stoneOn: "#d5e8f7",
     flowerBed: "#ffd0dc",
     path: "#f6d36a",
     wrong: "#ff7a55",

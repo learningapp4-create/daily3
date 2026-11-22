@@ -347,7 +347,7 @@ function pulsePad(on) {
 const starPos = new THREE.Vector3();
 
 function starAngle(star) {
-  return Math.atan2(star.z, star.x) + ringGroups[star.ring].rotation.y;
+  return Math.atan2(star.z, star.x) - ringGroups[star.ring].rotation.y;
 }
 
 function angleDelta(a, b) {
@@ -357,8 +357,11 @@ function angleDelta(a, b) {
   return d;
 }
 
-function catchLimit() {
-  return (CONFIG.catchDegrees * Math.PI) / 180;
+function catchLimit(star) {
+  const outer = rings()[0].radius || 1;
+  const radius = Math.max(0.8, Math.hypot(star.x, star.z));
+  const reach = outer * (((CONFIG.catchDegrees ?? 8) * Math.PI) / 180);
+  return reach / radius;
 }
 
 function starGap(star) {
@@ -366,10 +369,9 @@ function starGap(star) {
 }
 
 function starIsClose() {
-  const limit = catchLimit();
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (starGap(star) <= limit) return true;
+    if (starGap(star) <= catchLimit(star)) return true;
   }
   return false;
 }
@@ -409,7 +411,6 @@ function showMiss() {
 }
 
 function refreshAim() {
-  const limit = catchLimit();
   const moved = prevTheta != null && Math.abs(angleDelta(birdTheta, prevTheta)) > 0.0001;
   let any = false;
   for (const star of stars) {
@@ -418,7 +419,7 @@ function refreshAim() {
       if (star.ring !== ringIndex) star.wasClose = null;
       continue;
     }
-    const close = starGap(star) <= limit;
+    const close = starGap(star) <= catchLimit(star);
     if (star.wasClose == null) star.wasClose = close;
     if (!close) {
       star.wasClose = false;
@@ -445,7 +446,6 @@ function refreshAim() {
 
 function collectAligned() {
   if (mode !== "play" || paused || hopping) return;
-  const limit = catchLimit();
   if (!earned) {
     showMiss();
     const near = nearestStar();
@@ -455,7 +455,7 @@ function collectAligned() {
   let caught = false;
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (star.earned && starGap(star) <= limit) {
+    if (star.earned && starGap(star) <= catchLimit(star)) {
       takeStar(star);
       caught = true;
     }
@@ -480,7 +480,6 @@ starMark.visible = false;
 scene.add(starMark);
 
 function dressStars(dt) {
-  const limit = catchLimit();
   let marked = null;
   let markedGap = Infinity;
   for (const star of stars) {
@@ -489,12 +488,8 @@ function dressStars(dt) {
     star.mesh.position.x = star.x;
     star.mesh.position.z = star.z;
     const gap = star.ring === ringIndex ? starGap(star) : Infinity;
-    const near = Boolean(star.earned) && gap <= limit;
-    const len = Math.hypot(star.x, star.z) || 1;
-    const aside = near ? 1.05 : 0;
-    star.mesh.scale.setScalar((near ? 1.15 : 1) + (star.boop || 0) * 0.15);
-    star.mesh.position.x = star.x + (-star.z / len) * aside;
-    star.mesh.position.z = star.z + (star.x / len) * aside;
+    const near = Boolean(star.earned) && gap <= catchLimit(star);
+    star.mesh.scale.setScalar((near ? 1.08 : 1) + (star.boop || 0) * 0.15);
     star.mesh.position.y = 0.22 + (star.boop || 0) * 0.08;
     if (near && gap < markedGap) {
       marked = star;

@@ -389,76 +389,56 @@ function update(dt) {
 function frameCamera(dt, snap) {
   const y = ball.position.y;
   const cam = CONFIG.camera;
-  const previous = camera.position.clone();
-  const band = playBand();
-  let extra = 0;
-  for (let i = 0; i < 14; i += 1) {
-    poseChase(extra, y);
-    if (nearShellsFit(band)) break;
-    extra += 0.55;
-  }
-  const desired = camera.position.clone();
+  const camZ = Math.max(0.35, z - cam.back);
+  const desired = new THREE.Vector3(x * 0.4, y + cam.up, camZ);
   if (snap) camera.position.copy(desired);
-  else camera.position.copy(previous).lerp(desired, 1 - Math.exp(-4 * dt));
-  camera.lookAt(x * 0.15, y + cam.lookUp - 0.9, z + cam.lookAhead);
+  else camera.position.lerp(desired, 1 - Math.exp(-4 * dt));
+  camera.lookAt(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
   camera.updateMatrixWorld();
+  const band = playBand();
   for (const shell of shells) {
-    shell.mesh.visible = !shell.got && shellInBand(shell, band);
+    if (shell.got) {
+      shell.mesh.visible = false;
+      continue;
+    }
+    shell.mesh.visible = true;
+    const homeY = shell.mesh.position.y;
+    shell.mesh.position.x = shell.x;
+    shell.mesh.position.z = shell.z;
+    let lift = 0;
+    for (let i = 0; i < 16; i += 1) {
+      shell.mesh.position.y = homeY + lift;
+      if (shellBottomClears(shell, band)) break;
+      lift += 0.35;
+    }
   }
 }
 
 function playBand() {
   const h = Math.max(1, window.innerHeight);
-  const header = document.querySelector("header")?.getBoundingClientRect();
   const footer = document.querySelector("footer")?.getBoundingClientRect();
-  const topPx = (header?.bottom ?? 80) + 10;
-  const bottomPx = h - (footer?.top ?? h - 110) + 12;
-  return {
-    yMax: 1 - (2 * topPx) / h,
-    yMin: -1 + (2 * bottomPx) / h,
-    xMin: -0.94,
-    xMax: 0.94,
-  };
-}
-
-function poseChase(extra, y) {
-  const cam = CONFIG.camera;
-  const camZ = Math.max(0.2, z - cam.back - extra);
-  camera.position.set(x * 0.4, y + cam.up + extra * 0.28, camZ);
-  camera.lookAt(x * 0.15, y + cam.lookUp - 0.9, z + cam.lookAhead);
-  camera.updateMatrixWorld();
+  const bottomPx = h - (footer?.top ?? h - 110) + 16;
+  return { yMin: -1 + (2 * bottomPx) / h };
 }
 
 const shellPoint = new THREE.Vector3();
 const shellView = new THREE.Vector3();
 
-function shellInBand(shell, band) {
+function shellBottomClears(shell, band) {
   const origin = shell.mesh.position;
-  const radius = 1.05;
-  const samples = [
-    [0, 0.15, 0],
-    [radius, 0.2, 0],
-    [-radius, 0.2, 0],
-    [0, radius, 0],
-    [0, 0, radius],
-    [0, 0, -radius],
+  const spots = [
+    [0, 0.05, 0],
+    [0, 0.1, 1.35],
+    [0, 0.1, -1.35],
+    [1.15, 0.2, 0],
+    [-1.15, 0.2, 0],
   ];
-  for (const [ox, oy, oz] of samples) {
+  for (const [ox, oy, oz] of spots) {
     shellPoint.set(origin.x + ox, origin.y + oy, origin.z + oz);
     shellView.copy(shellPoint).applyMatrix4(camera.matrixWorldInverse);
-    if (shellView.z > -camera.near) return false;
+    if (shellView.z > -0.9) return false;
     shellPoint.project(camera);
-    if (shellPoint.z < -1 || shellPoint.z > 1) return false;
-    if (shellPoint.x < band.xMin || shellPoint.x > band.xMax) return false;
-    if (shellPoint.y < band.yMin || shellPoint.y > band.yMax) return false;
-  }
-  return true;
-}
-
-function nearShellsFit(band) {
-  for (const shell of shells) {
-    if (shell.got || shell.z < z - 6) continue;
-    if (!shellInBand(shell, band)) return false;
+    if (shellPoint.y < band.yMin) return false;
   }
   return true;
 }

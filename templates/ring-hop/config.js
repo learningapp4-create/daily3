@@ -12,9 +12,9 @@ export const CONFIG = {
     catch: "sfx/catch.webm",
     moon: "sfx/moon.webm",
   },
-  // How close a star must be, in degrees, before Catch lights and scores.
-  // The bird has to be on that star. A star across the ring stays plain.
-  catchDegrees: 42,
+  // Outer-ring window, in degrees. The same distance is used on every ring,
+  // short enough that the bird is standing on the star.
+  catchDegrees: 6,
   // How far one press of Left or Right steps, in radians. The step happens on the press.
   tapStep: 1.05,
 
