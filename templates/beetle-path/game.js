@@ -257,20 +257,26 @@ function paintCursor() {
     if (tile.wrong) color = CONFIG.colors.wrong;
     else if (selected) color = CONFIG.colors.stoneOn;
     tile.stone.material.color.set(color);
-    tile.stone.position.y = tile.wrong ? 0.16 : selected ? 0.1 : 0;
-    tile.marker.visible = !tile.wrong;
+    const lift = tile.wrong ? 0.16 : selected ? 0.1 : 0;
+    tile.stone.position.y = lift;
+    const pos = tileXZ(tile.c, tile.r);
+    tile.marker.visible = true;
+    tile.marker.position.set(pos.x, 0.2 + lift, pos.z + (tile.wrong ? 0.28 : 0));
     if (tile.marker.userData.mat) {
       tile.marker.userData.mat.color.set(tile.wrong ? "#fffaf0" : CONFIG.colors.arrow);
     }
   }
 }
 
+let beetleAt = { c: CONFIG.start.c, r: CONFIG.start.r };
+
 function placeBeetle(c, r, lift = 0) {
+  beetleAt = { c, r };
   const pos = tileXZ(c, r);
   const tile = tileAt(c, r);
   const onWrong = Boolean(tile && tile.wrong);
   beetle.scale.setScalar(0.78);
-  beetle.position.set(pos.x, (onWrong ? 0.52 : 0.34) + lift, onWrong ? pos.z : pos.z + 0.34);
+  beetle.position.set(pos.x, (onWrong ? 0.56 : 0.34) + lift, pos.z + (onWrong ? -0.2 : 0.34));
 }
 
 function showCard(title, body, label) {
@@ -346,10 +352,7 @@ function turnTile(c, r) {
   playSound("turn");
   cursor = { c, r };
   paintCursor();
-  placeBeetle(c, r);
-  if (CONFIG.start.c === c && CONFIG.start.r === r && !walk) {
-    beetle.rotation.y = DIRS[next].rot;
-  }
+  if (beetleAt.c === c && beetleAt.r === r) beetle.rotation.y = DIRS[next].rot;
 }
 
 function markWrong(at) {
@@ -522,7 +525,7 @@ function frame(now) {
   spinMarkers(dt);
   for (const tile of tiles) {
     if (tile.flower) continue;
-    const s = tile.wrong ? 1 + Math.sin(now * 0.012) * 0.22 : 1;
+    const s = tile.wrong ? 1 + Math.sin(now * 0.012) * 0.05 : 1;
     tile.marker.scale.setScalar(s);
   }
   if (flowerTile) flowerTile.marker.position.y = 0.18 + Math.sin(now * 0.003) * 0.05;

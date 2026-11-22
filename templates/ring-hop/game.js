@@ -433,6 +433,10 @@ function refreshAim() {
   }
   earned = any;
   prevTheta = birdTheta;
+  if (earned && goalEl.textContent === "Miss") {
+    missUntil = 0;
+    goalEl.textContent = CONFIG.goalText || `Level ${levelIndex + 1}`;
+  }
   if (missUntil && performance.now() > missUntil) {
     missUntil = 0;
     if (goalEl.textContent === "Miss") goalEl.textContent = CONFIG.goalText || `Level ${levelIndex + 1}`;
@@ -458,6 +462,8 @@ function collectAligned() {
   }
   if (caught) {
     earned = false;
+    missUntil = 0;
+    if (goalEl.textContent === "Miss") goalEl.textContent = CONFIG.goalText || `Level ${levelIndex + 1}`;
     return;
   }
   showMiss();
