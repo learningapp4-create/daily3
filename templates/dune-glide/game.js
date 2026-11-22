@@ -107,8 +107,8 @@ function makeShell() {
   mouth.position.set(0, 0.26, -0.3);
   group.add(body, mouth);
   for (let i = -3; i <= 3; i += 1) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.5), shellRidgeMat);
-    rib.position.set(i * 0.1, 0.86, -0.12);
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.14, 0.58), shellRidgeMat);
+    rib.position.set(i * 0.1, 0.78, 0.02);
     rib.rotation.y = i * 0.1;
     group.add(rib);
   }
@@ -404,17 +404,16 @@ function frameCamera(dt, snap) {
     shell.mesh.position.z = shell.z;
     shell.mesh.scale.setScalar(1.15);
     shell.mesh.rotation.set(0, 0, 0);
-    const flat = Math.hypot(camera.position.x - shell.x, camera.position.z - shell.z);
-    shell._flat = flat;
+    shell._flat = Math.hypot(camera.position.x - shell.x, camera.position.z - shell.z);
     const bob = Math.sin(performance.now() * 0.004 + shell.z) * 0.08;
     shell.mesh.position.y = shell.baseY + bob;
   }
-  // The low chase view hides the next shells behind the dune, so they read as pale discs. Lift those two until they stay ridged shells. The last shell already clears the flag.
-  const waiting = shells.filter((shell) => !shell.got && shell.z < 21.5).sort((a, b) => a._flat - b._flat);
-  waiting.slice(0, 2).forEach((shell, index) => {
-    const fadeIn = Math.min(1, Math.max(0, (13.5 - shell._flat) / 3));
-    shell.mesh.position.y += (index === 0 ? 1.15 : 0.7) * fadeIn;
-  });
+  // Grow the nearest shell up from the sand so its ridges stay visible. Lifting it would float it onto the shell behind.
+  const nearest = shells.filter((shell) => !shell.got).sort((a, b) => a._flat - b._flat)[0];
+  if (nearest && nearest.z < 21.5) {
+    const fade = Math.min(1, Math.max(0, (12.5 - nearest._flat) / 4));
+    nearest.mesh.scale.y = 1.15 * (1 + 0.5 * fade);
+  }
 }
 
 function frame(now) {
