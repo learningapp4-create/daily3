@@ -21,6 +21,8 @@ export const CONFIG = {
   drag: 1.15,
   // Metres per second along the dune.
   cruise: 2.15,
+  // Seconds to ease from a standstill into full speed when a round starts.
+  easeSeconds: 1.1,
   // How far apart the two height samples are when reading the slope.
   slopeSpan: 0.07,
   maxSideSpeed: 4,
@@ -51,6 +53,7 @@ export const CONFIG = {
     ball: "#f4f7fb",
     ballSpot: "#7ec8e3",
     shell: "#12c4a8",
+    pickup: "#ffe56a",
     camp: "#e23d3d",
     flag: "#fff4d6",
   },

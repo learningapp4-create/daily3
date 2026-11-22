@@ -1,11 +1,11 @@
 // Knobs for Ring Hop. Change these, then reload the page.
-// rings[0] is the outside. Angles are degrees. Speed is radians per second.
+// levels[0] is the start. Each rings[0] is the outside ring.
+// Angles are degrees. Speed is radians per second. walkSpeed is too.
 
 export const CONFIG = {
   title: "Ring Hop",
-  // Optional one-line label. Leave empty: the bird, the stars, and the button teach the round.
+  // Optional one-line label. Leave empty: the bird, the stars, and the rings teach the round.
   goalText: "",
-  goalStars: 5,
   soundVolume: 0.85,
   sounds: {
     hop: "sfx/hop.webm",
@@ -14,13 +14,41 @@ export const CONFIG = {
   },
   // How close a star must be to the bird, in degrees, to catch it.
   catchDegrees: 50,
-  hopSeconds: 0.36,
 
-  rings: [
-    { radius: 5.5, speed: 0.55, stars: [28, 200] },
-    { radius: 4.25, speed: -0.48, stars: [90, 270] },
-    { radius: 3.05, speed: 0.62, stars: [40, 210] },
-    { radius: 1.95, speed: -0.42, stars: [150, 330] },
+  levels: [
+    {
+      goalStars: 4,
+      hopSeconds: 0.5,
+      walkSpeed: 0.85,
+      rings: [
+        { radius: 5.5, speed: 0.22, stars: [28, 200] },
+        { radius: 4.25, speed: -0.18, stars: [90, 270] },
+        { radius: 3.05, speed: 0.26, stars: [40, 210] },
+        { radius: 1.95, speed: -0.16, stars: [150, 330] },
+      ],
+    },
+    {
+      goalStars: 5,
+      hopSeconds: 0.42,
+      walkSpeed: 1.05,
+      rings: [
+        { radius: 5.5, speed: 0.38, stars: [20, 140, 250] },
+        { radius: 4.25, speed: -0.32, stars: [80, 200, 310] },
+        { radius: 3.05, speed: 0.42, stars: [40, 170, 280] },
+        { radius: 1.95, speed: -0.28, stars: [110, 250] },
+      ],
+    },
+    {
+      goalStars: 6,
+      hopSeconds: 0.36,
+      walkSpeed: 1.25,
+      rings: [
+        { radius: 5.5, speed: 0.55, stars: [15, 110, 200, 300] },
+        { radius: 4.25, speed: -0.48, stars: [50, 160, 270] },
+        { radius: 3.05, speed: 0.62, stars: [30, 140, 240] },
+        { radius: 1.95, speed: -0.42, stars: [90, 210, 330] },
+      ],
+    },
   ],
 
   colors: {

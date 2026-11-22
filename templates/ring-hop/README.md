@@ -6,9 +6,9 @@ A bird sits on spinning rings. Stars ride the rings, and the moon waits in the m
 
 Edit `config.js`.
 
-- `goalStars` — how many stars open the moon
+- `levels` — each level has `goalStars`, `hopSeconds`, `walkSpeed`, and `rings`
 - `catchDegrees` — how close a star must be to count
-- `rings` — outside ring first. `radius`, `speed` (radians per second), `stars` (degrees around the ring)
+- `rings` — outside ring first, inside each level. `radius`, `speed` (radians per second), `stars` (degrees around the ring)
 - `colors` — sky, rings, stars, bird, moon
 - `sounds` — files for a hop, a catch, and the moon. `soundVolume` turns them down
 

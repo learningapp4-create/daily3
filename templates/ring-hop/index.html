@@ -35,14 +35,14 @@
     button {
       pointer-events: auto;
       border: 0;
-      min-width: 7.5rem;
+      min-width: 6.2rem;
       min-height: 4rem;
-      font: 700 1.3rem "Trebuchet MS", "Segoe UI", sans-serif;
+      font: 700 1.15rem "Trebuchet MS", "Segoe UI", sans-serif;
       color: #241c14;
       cursor: pointer;
     }
     button:focus-visible { outline: 3px solid #ffd45a; outline-offset: 2px; }
-    #act, .panel button { background: #ffd45a; min-width: 9rem; }
+    #catch.ready, #moon, .panel button { background: #ffd45a; }
     button[hidden] { display: none; }
     .card {
       position: fixed; inset: 0;
@@ -73,8 +73,12 @@
   </header>
   <canvas id="view"></canvas>
   <footer>
-    <button type="button" id="out" hidden>Hop out</button>
-    <button type="button" id="act">Hop in</button>
+    <button type="button" id="left">Left</button>
+    <button type="button" id="right">Right</button>
+    <button type="button" id="out">Hop out</button>
+    <button type="button" id="catch">Catch</button>
+    <button type="button" id="hop-in">Hop in</button>
+    <button type="button" id="moon" hidden>To the moon</button>
     <button type="button" id="pause">Pause</button>
   </footer>
   <div class="card" id="card">

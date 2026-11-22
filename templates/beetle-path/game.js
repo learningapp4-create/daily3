@@ -116,11 +116,11 @@ const pointer = new THREE.Vector2();
 
 function makeArrow() {
   const group = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.42), arrowMat);
-  shaft.position.z = 0.02;
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 4), arrowMat);
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.34), arrowMat);
+  shaft.position.set(0, 0.1, 0.02);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.24, 4), arrowMat);
   head.rotation.x = -Math.PI / 2;
-  head.position.z = -0.32;
+  head.position.set(0, 0.16, -0.26);
   group.add(shaft, head);
   return group;
 }
@@ -148,7 +148,7 @@ for (let r = 0; r < height; r += 1) {
     const isFlower = letters[r][c] === "F";
     if (isFlower) stone.material.color.set(CONFIG.colors.flowerBed);
     const marker = isFlower ? makeFlower() : makeArrow();
-    marker.position.set(pos.x, 0.12, pos.z);
+    marker.position.set(pos.x, isFlower ? 0.12 : 0.2, pos.z);
     if (!isFlower) marker.rotation.y = DIRS[letters[r][c]].rot;
     stone.userData = { c, r };
     scene.add(stone, marker);

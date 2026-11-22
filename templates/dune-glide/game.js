@@ -25,14 +25,9 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   audio.preload = "auto";
   clips.set(name, audio);
 }
+const unlock = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
 function primeAudio() {
-  const audio = clips.values().next().value;
-  if (!audio) return;
-  audio.volume = 0;
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-  }).catch(() => {});
+  unlock.play().catch(() => {});
 }
 window.addEventListener("pointerdown", primeAudio, { once: true });
 window.addEventListener("keydown", primeAudio, { once: true });
@@ -55,6 +50,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.sky);
 const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 80);
+camera.position.set(0, 5.2, 0.6);
+camera.lookAt(0, 1.2, 7);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.72));
 const sun = new THREE.DirectionalLight(0xffffff, 0.85);
@@ -91,7 +88,15 @@ function makeShell() {
   const lip = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.07, 6, 16), shellMat);
   lip.rotation.x = Math.PI / 2;
   lip.position.y = 0.08;
-  group.add(dome, lip);
+  const markMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.pickup });
+  const plusA = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.08), markMat);
+  const plusB = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.34), markMat);
+  plusA.position.y = 0.58;
+  plusB.position.y = 0.58;
+  const pad = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.045, 6, 18), markMat);
+  pad.rotation.x = Math.PI / 2;
+  pad.position.y = -0.5;
+  group.add(dome, lip, plusA, plusB, pad);
   return group;
 }
 const shells = CONFIG.shells.map((spot) => {
@@ -143,6 +148,7 @@ let x = 0;
 let z = CONFIG.startZ;
 let vx = 0;
 let shellsGot = 0;
+let rollIn = 0;
 let last = performance.now();
 
 function resize() {
@@ -183,15 +189,25 @@ function popScore() {
   scoreEl.classList.add("pop");
 }
 
+let cardTimer = 0;
+
 function showCard(title, body, label) {
+  window.clearTimeout(cardTimer);
   cardTitle.textContent = title;
-  cardBody.textContent = body;
+  cardBody.textContent = body || "";
   cardGo.textContent = label;
+  card.classList.remove("leaving");
   card.hidden = false;
 }
 
 function hideCard() {
-  card.hidden = true;
+  if (card.hidden || card.classList.contains("leaving")) return;
+  card.classList.add("leaving");
+  window.clearTimeout(cardTimer);
+  cardTimer = window.setTimeout(() => {
+    card.hidden = true;
+    card.classList.remove("leaving");
+  }, 480);
 }
 
 function resetRound() {
@@ -258,7 +274,10 @@ function update(dt) {
   } else {
     x = nextX;
   }
-  z += CONFIG.cruise * dt;
+  const ease = CONFIG.easeSeconds > 0 ? Math.min(1, rollIn / CONFIG.easeSeconds) : 1;
+  rollIn += dt;
+  const cruiseNow = CONFIG.cruise * ease * ease;
+  z += cruiseNow * dt;
 
   const y = groundY(x, z);
   if (y == null) {
@@ -267,7 +286,7 @@ function update(dt) {
   }
   ball.position.set(x, y + CONFIG.ballRadius, z);
   shade.position.set(x, y + 0.03, z);
-  ball.rotation.x -= (CONFIG.cruise / CONFIG.ballRadius) * dt;
+  ball.rotation.x -= (cruiseNow / CONFIG.ballRadius) * dt;
   ball.rotation.z += (vx / CONFIG.ballRadius) * dt;
 
   const bob = performance.now() * 0.004;
@@ -366,6 +385,7 @@ pauseBtn.addEventListener("click", togglePause);
 cardGo.addEventListener("click", () => {
   if (mode === "loading") return;
   if (mode === "ready") {
+    rollIn = 0;
     hideCard();
     mode = "play";
     return;
@@ -390,6 +410,8 @@ loader.load(
     placeProps();
     cardGo.disabled = false;
     resetRound();
+    frameCamera(1, true);
+    snapCam = false;
   },
   undefined,
   () => {

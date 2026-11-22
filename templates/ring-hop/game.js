@@ -10,8 +10,12 @@ const cardTitle = document.querySelector("#card-title");
 const cardBody = document.querySelector("#card-body");
 const cardGo = document.querySelector("#card-go");
 const pauseBtn = document.querySelector("#pause");
-const actBtn = document.querySelector("#act");
+const leftBtn = document.querySelector("#left");
+const rightBtn = document.querySelector("#right");
+const hopInBtn = document.querySelector("#hop-in");
 const outBtn = document.querySelector("#out");
+const catchBtn = document.querySelector("#catch");
+const moonBtn = document.querySelector("#moon");
 
 titleEl.textContent = CONFIG.title;
 goalEl.textContent = CONFIG.goalText || "";
@@ -24,14 +28,9 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   audio.preload = "auto";
   clips.set(name, audio);
 }
+const unlock = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
 function primeAudio() {
-  const audio = clips.values().next().value;
-  if (!audio) return;
-  audio.volume = 0;
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-  }).catch(() => {});
+  unlock.play().catch(() => {});
 }
 window.addEventListener("pointerdown", primeAudio, { once: true });
 window.addEventListener("keydown", primeAudio, { once: true });
@@ -79,7 +78,15 @@ const ringGroups = [];
 const ringMeshes = [];
 const stars = [];
 
-CONFIG.rings.forEach((ring, index) => {
+let levelIndex = 0;
+function level() {
+  return CONFIG.levels[levelIndex];
+}
+function rings() {
+  return level().rings;
+}
+
+rings().forEach((ring) => {
   const group = new THREE.Group();
   const mesh = new THREE.Mesh(
     new THREE.TorusGeometry(ring.radius, 0.075, 8, 28),
@@ -88,16 +95,23 @@ CONFIG.rings.forEach((ring, index) => {
   ringMeshes.push(mesh);
   mesh.rotation.x = Math.PI / 2;
   group.add(mesh);
-  for (const deg of ring.stars) {
-    const star = new THREE.Mesh(starGeo, starMat);
-    const a = (deg * Math.PI) / 180;
-    star.position.set(Math.cos(a) * ring.radius, 0.22, Math.sin(a) * ring.radius);
-    group.add(star);
-    stars.push({ mesh: star, ring: index, got: false });
-  }
   scene.add(group);
   ringGroups.push(group);
 });
+
+function layStars() {
+  for (const star of stars) star.mesh.removeFromParent();
+  stars.length = 0;
+  rings().forEach((ring, index) => {
+    for (const deg of ring.stars) {
+      const star = new THREE.Mesh(starGeo, starMat);
+      const a = (deg * Math.PI) / 180;
+      star.position.set(Math.cos(a) * ring.radius, 0.22, Math.sin(a) * ring.radius);
+      ringGroups[index].add(star);
+      stars.push({ mesh: star, ring: index, got: false });
+    }
+  });
+}
 
 const bird = new THREE.Group();
 const body = new THREE.Mesh(
@@ -150,7 +164,7 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
-  const outer = CONFIG.rings[0].radius + 1.3;
+  const outer = rings()[0].radius + 1.3;
   const half = Math.tan((camera.fov * Math.PI) / 360);
   const aspect = w / h;
   let dist = Math.hypot(8.2, 7.6);
@@ -167,11 +181,11 @@ function totalStars() {
 }
 
 function scoreText() {
-  return `Stars ${starsGot}/${CONFIG.goalStars}`;
+  return `Stars ${starsGot}/${level().goalStars}`;
 }
 
 function moonOpen() {
-  return starsGot >= CONFIG.goalStars;
+  return starsGot >= level().goalStars;
 }
 
 function showCard(title, body, label) {
@@ -198,27 +212,13 @@ function popScore() {
 }
 
 function updateButtons() {
-  const lastRing = ringIndex >= CONFIG.rings.length - 1;
+  const lastRing = ringIndex >= rings().length - 1;
   const aligned = mode === "play" && !hopping && starIsClose();
-  let text = "Hop in";
-  let dir = "in";
-  if (lastRing && moonOpen()) {
-    text = "To the moon";
-    dir = "moon";
-  } else if (aligned) {
-    text = "Catch";
-    dir = lastRing ? "out" : "in";
-  } else if (lastRing) {
-    text = "Hop out";
-    dir = "out";
-  }
-  if (actBtn.textContent !== text || actBtn.dataset.dir !== dir) {
-    actBtn.hidden = false;
-    actBtn.textContent = text;
-    actBtn.dataset.dir = dir;
-  }
-  const hideOut = ringIndex === 0 || (lastRing && !moonOpen());
-  if (outBtn.hidden !== hideOut) outBtn.hidden = hideOut;
+  catchBtn.classList.toggle("ready", aligned);
+  outBtn.hidden = ringIndex === 0;
+  const showMoon = lastRing && moonOpen();
+  moonBtn.hidden = !showMoon;
+  hopInBtn.hidden = showMoon;
 }
 
 function resetRound() {
@@ -227,25 +227,33 @@ function resetRound() {
   ringIndex = 0;
   starsGot = 0;
   hopping = null;
+  birdTheta = 0;
+  faceSign = 1;
+  walkKeys.left = false;
+  walkKeys.right = false;
   pauseBtn.textContent = "Pause";
   for (const group of ringGroups) group.rotation.y = 0;
-  for (const star of stars) {
-    star.got = false;
-    star.mesh.visible = true;
-  }
+  layStars();
   moon.material.color.set(CONFIG.colors.moonDim);
   moonHalo.material.color.set(CONFIG.colors.moonDim);
   scoreEl.textContent = scoreText();
-  goalEl.textContent = CONFIG.goalText || "";
+  goalEl.textContent = CONFIG.goalText || `Level ${levelIndex + 1}`;
   updateButtons();
   paintRings();
-  placeBird(CONFIG.rings[0].radius, 0);
+  placeBird(rings()[0].radius, 0);
   showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
 }
 
+let birdTheta = 0;
+let faceSign = 1;
+const walkKeys = { left: false, right: false };
+
 function placeBird(radius, bob) {
-  bird.position.set(radius, 0.32 + bob, 0);
-  pad.position.set(radius, 0.14, 0);
+  const x = Math.cos(birdTheta) * radius;
+  const z = Math.sin(birdTheta) * radius;
+  bird.position.set(x, 0.32 + bob, z);
+  pad.position.set(x, 0.14, z);
+  bird.rotation.y = Math.PI / 2 - birdTheta + (faceSign < 0 ? Math.PI : 0);
 }
 
 function pulsePad(on) {
@@ -260,22 +268,29 @@ function starAngle(star) {
   return Math.atan2(starPos.z, starPos.x);
 }
 
+function angleDelta(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
 function starIsClose() {
   const limit = (CONFIG.catchDegrees * Math.PI) / 180;
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (Math.abs(starAngle(star)) <= limit) return true;
+    if (Math.abs(angleDelta(starAngle(star), birdTheta)) <= limit) return true;
   }
   return false;
 }
 
 function collectAligned() {
+  if (mode !== "play" || paused || hopping) return;
   const limit = (CONFIG.catchDegrees * Math.PI) / 180;
   let caught = 0;
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    const angle = starAngle(star);
-    if (Math.abs(angle) <= limit) {
+    if (Math.abs(angleDelta(starAngle(star), birdTheta)) <= limit) {
       star.got = true;
       star.mesh.visible = false;
       starsGot += 1;
@@ -297,37 +312,51 @@ function collectAligned() {
 function hop(dir) {
   if (mode !== "play" || paused || hopping) return;
   if (dir === "out" && ringIndex === 0) return;
-  if (dir === "moon" && !(ringIndex === CONFIG.rings.length - 1 && moonOpen())) return;
-  playSound("hop");
-  collectAligned();
-  const from = CONFIG.rings[ringIndex].radius;
+  if (dir === "moon" && !(ringIndex === rings().length - 1 && moonOpen())) return;
+  const from = rings()[ringIndex].radius;
   if (dir === "moon") {
+    playSound("hop");
     hopping = { from, to: 0.9, t: 0, dest: "moon" };
     return;
   }
   const next = ringIndex + (dir === "in" ? 1 : -1);
-  if (next < 0 || next >= CONFIG.rings.length) return;
-  hopping = { from, to: CONFIG.rings[next].radius, t: 0, dest: next };
+  if (next < 0 || next >= rings().length) return;
+  playSound("hop");
+  hopping = { from, to: rings()[next].radius, t: 0, dest: next };
+}
+
+function hopIn() {
+  if (ringIndex === rings().length - 1 && moonOpen()) hop("moon");
+  else hop("in");
 }
 
 function finish() {
   mode = "end";
   playSound("moon");
-  showCard(CONFIG.winTitle, scoreText(), "Again");
+  const more = levelIndex < CONFIG.levels.length - 1;
+  showCard(CONFIG.winTitle, scoreText(), more ? "Next" : "Again");
+}
+
+function walk(dt) {
+  const dir = (walkKeys.right ? 1 : 0) + (walkKeys.left ? -1 : 0);
+  if (dir !== 0) faceSign = dir;
+  birdTheta += dir * level().walkSpeed * dt;
 }
 
 function update(dt) {
   if (mode !== "play" || paused) {
-    placeBird(hopping ? bird.position.x : CONFIG.rings[ringIndex].radius, 0);
+    const radius = hopping ? hopping.from : rings()[ringIndex].radius;
+    placeBird(radius, 0);
     pulsePad(false);
     return;
   }
+  walk(dt);
   for (let i = 0; i < ringGroups.length; i += 1) {
-    ringGroups[i].rotation.y += CONFIG.rings[i].speed * dt;
+    ringGroups[i].rotation.y += rings()[i].speed * dt;
   }
   if (hopping) {
     hopping.t += dt;
-    const u = Math.min(1, hopping.t / CONFIG.hopSeconds);
+    const u = Math.min(1, hopping.t / level().hopSeconds);
     const ease = u * u * (3 - 2 * u);
     const radius = hopping.from + (hopping.to - hopping.from) * ease;
     const bob = Math.sin(Math.PI * u) * 0.5;
@@ -346,7 +375,7 @@ function update(dt) {
     }
     return;
   }
-  placeBird(CONFIG.rings[ringIndex].radius, 0);
+  placeBird(rings()[ringIndex].radius, 0);
   pulsePad(starIsClose());
   updateButtons();
 }
@@ -359,8 +388,26 @@ function frame(now) {
   renderer.render(scene, camera);
 }
 
-actBtn.addEventListener("click", () => hop(actBtn.dataset.dir || "in"));
+function holdWalk(button, key) {
+  const down = (event) => {
+    event.preventDefault();
+    walkKeys[key] = true;
+    faceSign = key === "right" ? 1 : -1;
+  };
+  const up = () => {
+    walkKeys[key] = false;
+  };
+  button.addEventListener("pointerdown", down);
+  button.addEventListener("pointerup", up);
+  button.addEventListener("pointerleave", up);
+  button.addEventListener("pointercancel", up);
+}
+holdWalk(leftBtn, "left");
+holdWalk(rightBtn, "right");
+hopInBtn.addEventListener("click", () => hopIn());
 outBtn.addEventListener("click", () => hop("out"));
+catchBtn.addEventListener("click", () => collectAligned());
+moonBtn.addEventListener("click", () => hop("moon"));
 pauseBtn.addEventListener("click", () => {
   if (mode !== "play") return;
   paused = !paused;
@@ -373,26 +420,49 @@ cardGo.addEventListener("click", () => {
     updateButtons();
     return;
   }
+  if (mode === "end" && levelIndex < CONFIG.levels.length - 1) {
+    levelIndex += 1;
+    resetRound();
+    return;
+  }
+  levelIndex = 0;
   resetRound();
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.repeat) return;
-  if (event.key === " " || event.key === "ArrowDown" || event.key === "Enter") {
+  if (!card.hidden && (event.key === "Enter" || event.key === " ")) {
     event.preventDefault();
-    if (!card.hidden && event.key === "Enter") {
-      cardGo.click();
-      return;
-    }
-    hop(actBtn.dataset.dir || "in");
+    cardGo.click();
+    return;
+  }
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    walkKeys.left = true;
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    walkKeys.right = true;
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
-    hop("out");
+    if (!event.repeat) hopIn();
+  } else if (event.key === "ArrowDown") {
+    event.preventDefault();
+    if (!event.repeat) hop("out");
+  } else if (event.key === " ") {
+    event.preventDefault();
+    if (!event.repeat) collectAligned();
   } else if (event.key === "p" || event.key === "P") {
-    pauseBtn.click();
+    if (!event.repeat) pauseBtn.click();
   } else if (event.key === "r" || event.key === "R") {
-    resetRound();
+    if (!event.repeat) resetRound();
   }
+});
+window.addEventListener("keyup", (event) => {
+  if (event.key === "ArrowLeft") walkKeys.left = false;
+  if (event.key === "ArrowRight") walkKeys.right = false;
+});
+window.addEventListener("blur", () => {
+  walkKeys.left = false;
+  walkKeys.right = false;
 });
 
 resetRound();
