@@ -277,6 +277,10 @@ function placeBeetle(c, r, lift = 0) {
   const onWrong = Boolean(tile && tile.wrong);
   beetle.scale.setScalar(onWrong ? 0.66 : 0.78);
   beetle.position.set(pos.x, (onWrong ? 0.4 : 0.34) + lift, onWrong ? pos.z + 0.12 : pos.z + 0.34);
+  if (onWrong) {
+    const face = letters[r]?.[c];
+    if (DIRS[face]) beetle.rotation.y = DIRS[face].rot;
+  }
 }
 
 function showCard(title, body, label) {

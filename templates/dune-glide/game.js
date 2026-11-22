@@ -101,14 +101,14 @@ const shellMouthMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell
 function makeShell() {
   const group = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), shellMat);
-  body.scale.set(1.12, 0.9, 0.95);
-  body.position.y = 0.38;
+  body.scale.set(1.05, 1.2, 0.95);
+  body.position.y = 0.5;
   const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), shellMouthMat);
   mouth.position.set(0, 0.26, -0.3);
   group.add(body, mouth);
   for (let i = -3; i <= 3; i += 1) {
     const rib = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.14, 0.58), shellRidgeMat);
-    rib.position.set(i * 0.1, 0.64, 0.02);
+    rib.position.set(i * 0.1, 0.78, 0.02);
     rib.rotation.y = i * 0.1;
     group.add(rib);
   }
@@ -402,19 +402,8 @@ function frameCamera(dt, snap) {
     shell.mesh.visible = true;
     shell.mesh.position.x = shell.x;
     shell.mesh.position.z = shell.z;
-    const homeY = shell.mesh.position.y;
-    const dist = Math.hypot(
-      camera.position.x - shell.x,
-      camera.position.y - homeY,
-      camera.position.z - shell.z,
-    );
-    // Same readable size up the lane. A close shell stays small enough to leave the flag clear.
-    const scale = Math.max(0.85, Math.min(1.9, 0.125 * dist));
-    shell.mesh.scale.setScalar(scale);
-    const dx = camera.position.x - shell.x;
-    const dz = camera.position.z - shell.z;
-    shell.mesh.rotation.y = Math.atan2(dx, dz);
-    shell.mesh.rotation.x = -Math.max(0, Math.min(0.75, (10.5 - dist) / 7));
+    shell.mesh.scale.setScalar(1.15);
+    shell.mesh.rotation.set(0, 0, 0);
   }
 }
 
