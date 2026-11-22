@@ -14,7 +14,10 @@ export const CONFIG = {
   },
   // Outer-ring window, in degrees. The same distance is used on every ring,
   // short enough that the bird is standing on the star.
-  catchDegrees: 6,
+  catchDegrees: 8,
+  // A step that ends this close, in degrees, finishes on that star.
+  // Far enough to reach in a step, short of the star on the other side.
+  approachDegrees: 36,
   // How far one press of Left or Right steps, in radians. The step happens on the press.
   tapStep: 1.05,
 

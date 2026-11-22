@@ -101,17 +101,18 @@ const shellMouthMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell
 function makeShell() {
   const group = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), shellMat);
-  body.scale.set(1.15, 0.72, 0.95);
-  body.position.y = 0.32;
+  body.scale.set(1.12, 0.9, 0.95);
+  body.position.y = 0.38;
   const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), shellMouthMat);
   mouth.position.set(0, 0.26, -0.3);
   group.add(body, mouth);
   for (let i = -3; i <= 3; i += 1) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.08, 0.5), shellRidgeMat);
-    rib.position.set(i * 0.09, 0.52, 0.02);
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.14, 0.58), shellRidgeMat);
+    rib.position.set(i * 0.1, 0.64, 0.02);
     rib.rotation.y = i * 0.1;
     group.add(rib);
   }
+  group.rotation.order = "YXZ";
   group.scale.setScalar(1.7);
   return group;
 }
@@ -363,9 +364,7 @@ function update(dt) {
   const bob = performance.now() * 0.004;
   for (const shell of shells) {
     if (shell.got) continue;
-    const wave = campNoted ? 0.22 : 0.1;
-    shell.mesh.position.y = shell.baseY + Math.sin(bob + shell.z) * wave;
-    shell.mesh.scale.setScalar(campNoted ? 2.45 : 1.85);
+    shell.mesh.position.y = shell.baseY + Math.sin(bob + shell.z) * 0.08;
     const dx = x - shell.x;
     const dz = z - shell.z;
     if (dx * dx + dz * dz <= CONFIG.shellRadius * CONFIG.shellRadius) {
@@ -395,52 +394,28 @@ function frameCamera(dt, snap) {
   else camera.position.lerp(desired, 1 - Math.exp(-4 * dt));
   camera.lookAt(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
   camera.updateMatrixWorld();
-  const band = playBand();
   for (const shell of shells) {
     if (shell.got) {
       shell.mesh.visible = false;
       continue;
     }
     shell.mesh.visible = true;
-    const homeY = shell.mesh.position.y;
     shell.mesh.position.x = shell.x;
     shell.mesh.position.z = shell.z;
-    let lift = 0;
-    for (let i = 0; i < 16; i += 1) {
-      shell.mesh.position.y = homeY + lift;
-      if (shellBottomClears(shell, band)) break;
-      lift += 0.35;
-    }
+    const homeY = shell.mesh.position.y;
+    const dist = Math.hypot(
+      camera.position.x - shell.x,
+      camera.position.y - homeY,
+      camera.position.z - shell.z,
+    );
+    // Same readable size up the lane. A close shell stays small enough to leave the flag clear.
+    const scale = Math.max(0.85, Math.min(1.9, 0.125 * dist));
+    shell.mesh.scale.setScalar(scale);
+    const dx = camera.position.x - shell.x;
+    const dz = camera.position.z - shell.z;
+    shell.mesh.rotation.y = Math.atan2(dx, dz);
+    shell.mesh.rotation.x = -Math.max(0, Math.min(0.75, (10.5 - dist) / 7));
   }
-}
-
-function playBand() {
-  const h = Math.max(1, window.innerHeight);
-  const footer = document.querySelector("footer")?.getBoundingClientRect();
-  const bottomPx = h - (footer?.top ?? h - 110) + 16;
-  return { yMin: -1 + (2 * bottomPx) / h };
-}
-
-const shellPoint = new THREE.Vector3();
-const shellView = new THREE.Vector3();
-
-function shellBottomClears(shell, band) {
-  const origin = shell.mesh.position;
-  const spots = [
-    [0, 0.05, 0],
-    [0, 0.1, 1.35],
-    [0, 0.1, -1.35],
-    [1.15, 0.2, 0],
-    [-1.15, 0.2, 0],
-  ];
-  for (const [ox, oy, oz] of spots) {
-    shellPoint.set(origin.x + ox, origin.y + oy, origin.z + oz);
-    shellView.copy(shellPoint).applyMatrix4(camera.matrixWorldInverse);
-    if (shellView.z > -0.9) return false;
-    shellPoint.project(camera);
-    if (shellPoint.y < band.yMin) return false;
-  }
-  return true;
 }
 
 function frame(now) {

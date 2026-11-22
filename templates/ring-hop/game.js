@@ -308,6 +308,7 @@ function resetRound() {
   faceSign = 1;
   earned = false;
   prevTheta = null;
+  latched = null;
   missUntil = 0;
   walkKeys.left = false;
   walkKeys.right = false;
@@ -328,6 +329,7 @@ let birdTheta = 0;
 let faceSign = 1;
 let earned = false;
 let prevTheta = null;
+let latched = null;
 let missUntil = 0;
 const walkKeys = { left: false, right: false };
 
@@ -366,6 +368,28 @@ function catchLimit(star) {
 
 function starGap(star) {
   return Math.abs(angleDelta(starAngle(star), birdTheta));
+}
+
+function approachLimit() {
+  return ((CONFIG.approachDegrees ?? 36) * Math.PI) / 180;
+}
+
+function starOnStep(from, to) {
+  const span = angleDelta(to, from);
+  let best = null;
+  let bestGap = approachLimit();
+  for (const star of stars) {
+    if (star.got || star.ring !== ringIndex) continue;
+    const ang = starAngle(star);
+    const along = angleDelta(ang, from);
+    const crossed = span > 0 ? along >= -0.04 && along <= span + 0.04 : along <= 0.04 && along >= span - 0.04;
+    const gap = crossed ? 0 : Math.abs(angleDelta(ang, to));
+    if (gap <= bestGap) {
+      bestGap = gap;
+      best = star;
+    }
+  }
+  return best;
 }
 
 function starIsClose() {
@@ -521,12 +545,14 @@ function hop(dir) {
   if (dir === "moon" && !moonOpen()) return;
   const from = rings()[ringIndex].radius;
   if (dir === "moon") {
+    latched = null;
     playSound("hop");
     hopping = { from, to: 0.9, t: 0, dest: "moon" };
     return;
   }
   const next = ringIndex + (dir === "in" ? 1 : -1);
   if (next < 0 || next >= rings().length) return;
+  latched = null;
   playSound("hop");
   hopping = { from, to: rings()[next].radius, t: 0, dest: next };
 }
@@ -543,12 +569,20 @@ function finish() {
   showCard(CONFIG.winTitle, scoreText(), more ? "Next" : "Again");
 }
 
+function walkHeld() {
+  const now = performance.now();
+  return (walkKeys.right && now - heldSince.right > 180) || (walkKeys.left && now - heldSince.left > 180);
+}
+
 function walk(dt) {
   const now = performance.now();
   let dir = 0;
   if (walkKeys.right && now - heldSince.right > 180) dir += 1;
   if (walkKeys.left && now - heldSince.left > 180) dir -= 1;
-  if (dir !== 0) faceSign = dir > 0 ? 1 : -1;
+  if (dir !== 0) {
+    faceSign = dir > 0 ? 1 : -1;
+    latched = null;
+  }
   birdTheta += dir * level().walkSpeed * dt;
 }
 
@@ -565,6 +599,8 @@ function update(dt) {
   for (let i = 0; i < ringGroups.length; i += 1) {
     ringGroups[i].rotation.y += rings()[i].speed * dt;
   }
+  if (latched && (latched.got || latched.ring !== ringIndex || walkHeld())) latched = null;
+  if (latched) birdTheta = starAngle(latched);
   refreshAim();
   if (hopping) {
     hopping.t += dt;
@@ -609,7 +645,15 @@ function stepWalk(key) {
   if (mode !== "play" || paused || hopping) return;
   const dir = key === "right" ? 1 : -1;
   faceSign = dir;
-  birdTheta += dir * (CONFIG.tapStep ?? 1.05);
+  const from = birdTheta;
+  const to = birdTheta + dir * (CONFIG.tapStep ?? 1.05);
+  const star = starOnStep(from, to);
+  latched = star;
+  birdTheta = star ? starAngle(star) : to;
+  if (star) {
+    star.earned = true;
+    star.wasClose = true;
+  }
 }
 
 function holdWalk(button, key) {

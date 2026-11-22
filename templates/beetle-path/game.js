@@ -261,7 +261,7 @@ function paintCursor() {
     tile.stone.position.y = lift;
     const pos = tileXZ(tile.c, tile.r);
     tile.marker.visible = true;
-    tile.marker.position.set(pos.x, 0.22 + lift, pos.z + (tile.wrong ? 0.4 : 0));
+    tile.marker.position.set(pos.x, 0.22 + lift, pos.z + (tile.wrong ? 0.7 : 0));
     if (tile.marker.userData.mat) {
       tile.marker.userData.mat.color.set(tile.wrong ? "#fffaf0" : CONFIG.colors.arrow);
     }
@@ -275,8 +275,8 @@ function placeBeetle(c, r, lift = 0) {
   const pos = tileXZ(c, r);
   const tile = tileAt(c, r);
   const onWrong = Boolean(tile && tile.wrong);
-  beetle.scale.setScalar(onWrong ? 0.46 : 0.78);
-  beetle.position.set(pos.x, (onWrong ? 0.74 : 0.34) + lift, onWrong ? pos.z - 0.3 : pos.z + 0.34);
+  beetle.scale.setScalar(onWrong ? 0.66 : 0.78);
+  beetle.position.set(pos.x, (onWrong ? 0.4 : 0.34) + lift, onWrong ? pos.z + 0.12 : pos.z + 0.34);
 }
 
 function showCard(title, body, label) {
