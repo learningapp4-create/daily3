@@ -10,6 +10,7 @@ const cardTitle = document.querySelector("#card-title");
 const cardBody = document.querySelector("#card-body");
 const cardGo = document.querySelector("#card-go");
 const pauseBtn = document.querySelector("#pause");
+const soundBtn = document.querySelector("#sound");
 const leftBtn = document.querySelector("#left");
 const rightBtn = document.querySelector("#right");
 const hopInBtn = document.querySelector("#hop-in");
@@ -28,19 +29,30 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   audio.preload = "auto";
   clips.set(name, audio);
 }
-const unlock = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
-function primeAudio() {
-  unlock.play().catch(() => {});
+let soundOn = true;
+function paintSound() {
+  soundBtn.textContent = soundOn ? "Sound" : "Quiet";
+  soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
 }
-window.addEventListener("pointerdown", primeAudio, { once: true });
-window.addEventListener("keydown", primeAudio, { once: true });
+paintSound();
 function playSound(name) {
+  if (!soundOn) return;
   const audio = clips.get(name);
   if (!audio) return;
+  audio.volume = CONFIG.soundVolume ?? 0.85;
   const node = audio.cloneNode();
-  node.volume = CONFIG.soundVolume ?? 0.85;
+  node.volume = audio.volume;
   node.play().catch(() => {});
 }
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  paintSound();
+  if (!soundOn) {
+    for (const audio of clips.values()) audio.pause();
+    return;
+  }
+  playSound("catch");
+});
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -216,9 +228,9 @@ function updateButtons() {
   const aligned = mode === "play" && !hopping && starIsClose();
   catchBtn.classList.toggle("ready", aligned);
   outBtn.hidden = ringIndex === 0;
-  const showMoon = lastRing && moonOpen();
+  const showMoon = mode === "play" && moonOpen();
   moonBtn.hidden = !showMoon;
-  hopInBtn.hidden = showMoon;
+  hopInBtn.hidden = showMoon && lastRing;
 }
 
 function resetRound() {
@@ -275,44 +287,91 @@ function angleDelta(a, b) {
   return d;
 }
 
+function catchLimit() {
+  return (CONFIG.catchDegrees * Math.PI) / 180;
+}
+
+function starGap(star) {
+  return Math.abs(angleDelta(starAngle(star), birdTheta));
+}
+
 function starIsClose() {
-  const limit = (CONFIG.catchDegrees * Math.PI) / 180;
+  const limit = catchLimit();
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (Math.abs(angleDelta(starAngle(star), birdTheta)) <= limit) return true;
+    if (starGap(star) <= limit) return true;
   }
   return false;
 }
 
-function collectAligned() {
-  if (mode !== "play" || paused || hopping) return;
-  const limit = (CONFIG.catchDegrees * Math.PI) / 180;
-  let caught = 0;
+function nearestStar() {
+  let best = null;
+  let bestGap = Infinity;
   for (const star of stars) {
     if (star.got || star.ring !== ringIndex) continue;
-    if (Math.abs(angleDelta(starAngle(star), birdTheta)) <= limit) {
-      star.got = true;
-      star.mesh.visible = false;
-      starsGot += 1;
-      caught += 1;
+    const gap = starGap(star);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = star;
     }
   }
-  if (caught) {
-    scoreEl.textContent = scoreText();
-    popScore();
-    playSound("catch");
-    if (moonOpen()) {
-      moon.material.color.set(CONFIG.colors.moon);
-      moonHalo.material.color.set(CONFIG.colors.moon);
+  return best;
+}
+
+function takeStar(star) {
+  star.got = true;
+  star.mesh.visible = false;
+  starsGot += 1;
+  scoreEl.textContent = scoreText();
+  popScore();
+  playSound("catch");
+  if (moonOpen()) {
+    moon.material.color.set(CONFIG.colors.moon);
+    moonHalo.material.color.set(CONFIG.colors.moon);
+  }
+  updateButtons();
+}
+
+function collectAligned() {
+  if (mode !== "play" || paused || hopping) return;
+  const limit = catchLimit();
+  let caught = false;
+  for (const star of stars) {
+    if (star.got || star.ring !== ringIndex) continue;
+    if (starGap(star) <= limit) {
+      takeStar(star);
+      caught = true;
     }
-    updateButtons();
+  }
+  if (caught) return;
+  const near = nearestStar();
+  if (near) near.boop = 1;
+}
+
+function dressStars(dt) {
+  const limit = catchLimit();
+  for (const star of stars) {
+    if (star.got) continue;
+    if (star.boop) star.boop = Math.max(0, star.boop - dt * 2.2);
+    const near = star.ring === ringIndex && starGap(star) <= limit;
+    const scale = (near ? 1.9 : 1) + (star.boop || 0) * 0.7;
+    star.mesh.scale.setScalar(scale);
+    star.mesh.position.y = 0.22 + (near ? 0.34 : 0) + (star.boop || 0) * 0.25;
+  }
+  if (mode === "play" && moonOpen()) {
+    const s = 1.2 + Math.sin(performance.now() * 0.007) * 0.1;
+    moon.scale.setScalar(s);
+    moonHalo.scale.setScalar(s);
+  } else {
+    moon.scale.setScalar(1);
+    moonHalo.scale.setScalar(1);
   }
 }
 
 function hop(dir) {
   if (mode !== "play" || paused || hopping) return;
   if (dir === "out" && ringIndex === 0) return;
-  if (dir === "moon" && !(ringIndex === rings().length - 1 && moonOpen())) return;
+  if (dir === "moon" && !moonOpen()) return;
   const from = rings()[ringIndex].radius;
   if (dir === "moon") {
     playSound("hop");
@@ -348,6 +407,7 @@ function update(dt) {
     const radius = hopping ? hopping.from : rings()[ringIndex].radius;
     placeBird(radius, 0);
     pulsePad(false);
+    dressStars(dt);
     return;
   }
   walk(dt);
@@ -362,6 +422,7 @@ function update(dt) {
     const bob = Math.sin(Math.PI * u) * 0.5;
     placeBird(radius, bob);
     pulsePad(false);
+    dressStars(dt);
     if (u >= 1) {
       if (hopping.dest === "moon") {
         hopping = null;
@@ -377,6 +438,7 @@ function update(dt) {
   }
   placeBird(rings()[ringIndex].radius, 0);
   pulsePad(starIsClose());
+  dressStars(dt);
   updateButtons();
 }
 

@@ -13,6 +13,8 @@ const cardGo = document.querySelector("#card-go");
 const pauseBtn = document.querySelector("#pause");
 const leftBtn = document.querySelector("#left");
 const rightBtn = document.querySelector("#right");
+const backBtn = document.querySelector("#back");
+const soundBtn = document.querySelector("#sound");
 
 titleEl.textContent = CONFIG.title;
 goalEl.textContent = CONFIG.goalText || "";
@@ -25,19 +27,30 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   audio.preload = "auto";
   clips.set(name, audio);
 }
-const unlock = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
-function primeAudio() {
-  unlock.play().catch(() => {});
+let soundOn = true;
+function paintSound() {
+  soundBtn.textContent = soundOn ? "Sound" : "Quiet";
+  soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
 }
-window.addEventListener("pointerdown", primeAudio, { once: true });
-window.addEventListener("keydown", primeAudio, { once: true });
+paintSound();
 function playSound(name) {
+  if (!soundOn) return;
   const audio = clips.get(name);
   if (!audio) return;
+  audio.volume = CONFIG.soundVolume ?? 0.85;
   const node = audio.cloneNode();
-  node.volume = CONFIG.soundVolume ?? 0.85;
+  node.volume = audio.volume;
   node.play().catch(() => {});
 }
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  paintSound();
+  if (!soundOn) {
+    for (const audio of clips.values()) audio.pause();
+    return;
+  }
+  playSound("collect");
+});
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -82,21 +95,26 @@ ball.add(ballBody);
 scene.add(ball);
 
 const shellMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shell });
+const shellRidgeMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shellRidge });
+const shellMouthMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.shellMouth });
 function makeShell() {
   const group = new THREE.Group();
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), shellMat);
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.07, 6, 16), shellMat);
-  lip.rotation.x = Math.PI / 2;
-  lip.position.y = 0.08;
-  const markMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.pickup });
-  const plusA = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.08), markMat);
-  const plusB = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.34), markMat);
-  plusA.position.y = 0.58;
-  plusB.position.y = 0.58;
-  const pad = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.045, 6, 18), markMat);
-  pad.rotation.x = Math.PI / 2;
-  pad.position.y = -0.5;
-  group.add(dome, lip, plusA, plusB, pad);
+  const tilt = -1.05;
+  const fan = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.2, 9), shellMat);
+  fan.rotation.x = tilt;
+  fan.position.set(0, 0.34, 0);
+  const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.36, 9), shellMouthMat);
+  mouth.rotation.x = tilt;
+  mouth.position.set(0, 0.32, -0.12);
+  group.add(fan, mouth);
+  for (let i = -3; i <= 3; i += 1) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.045, 0.5), shellRidgeMat);
+    rib.position.set(i * 0.11, 0.46, 0);
+    rib.rotation.x = tilt;
+    rib.rotation.y = i * 0.14;
+    group.add(rib);
+  }
+  group.scale.setScalar(1.85);
   return group;
 }
 const shells = CONFIG.shells.map((spot) => {
@@ -138,8 +156,8 @@ const raycaster = new THREE.Raycaster();
 const down = new THREE.Vector3(0, -1, 0);
 let dune = null;
 
-const hold = { left: false, right: false };
-const keys = { left: false, right: false };
+const hold = { left: false, right: false, back: false };
+const keys = { left: false, right: false, back: false };
 
 let mode = "loading";
 let paused = false;
@@ -149,6 +167,9 @@ let z = CONFIG.startZ;
 let vx = 0;
 let shellsGot = 0;
 let rollIn = 0;
+let along = 0;
+let campNoted = false;
+let heldAtCamp = false;
 let last = performance.now();
 
 function resize() {
@@ -171,7 +192,7 @@ function groundY(px, pz) {
 function placeProps() {
   for (const shell of shells) {
     const y = groundY(shell.x, shell.z);
-    shell.baseY = (y ?? 1) + 0.62;
+    shell.baseY = (y ?? 1) + 0.04;
     shell.mesh.position.set(shell.x, shell.baseY, shell.z);
   }
   const campY = groundY(CONFIG.camp.x, CONFIG.camp.z) ?? 1;
@@ -215,6 +236,10 @@ function resetRound() {
   z = CONFIG.startZ;
   vx = 0;
   shellsGot = 0;
+  along = 0;
+  campNoted = false;
+  heldAtCamp = false;
+  goalEl.textContent = CONFIG.goalText || "";
   paused = false;
   pauseBtn.textContent = "Pause";
   for (const shell of shells) {
@@ -276,8 +301,51 @@ function update(dt) {
   }
   const ease = CONFIG.easeSeconds > 0 ? Math.min(1, rollIn / CONFIG.easeSeconds) : 1;
   rollIn += dt;
-  const cruiseNow = CONFIG.cruise * ease * ease;
-  z += cruiseNow * dt;
+  const forward = CONFIG.cruise * ease * ease;
+  const backHeld = hold.back || keys.back;
+  if (heldAtCamp && backHeld) heldAtCamp = false;
+  const target = heldAtCamp ? 0 : backHeld ? -(CONFIG.back ?? 1.7) : forward;
+  const brake = CONFIG.brake ?? 6;
+  if (along < target) along = Math.min(target, along + brake * dt);
+  else along = Math.max(target, along - brake * dt);
+  z += along * dt;
+  if (z < CONFIG.startZ) {
+    z = CONFIG.startZ;
+    if (along < 0) along = 0;
+  }
+
+  const need = CONFIG.goalShells ?? shells.length;
+  const inCamp = z >= CONFIG.camp.z && Math.abs(x - CONFIG.camp.x) <= CONFIG.camp.halfWidth;
+  if (inCamp && shellsGot >= need && along >= 0) {
+    const yWin = groundY(x, z);
+    if (yWin != null) {
+      ball.position.set(x, yWin + CONFIG.ballRadius, z);
+      shade.position.set(x, yWin + 0.03, z);
+    }
+    finish("win");
+    return;
+  }
+  if (!heldAtCamp && !backHeld && inCamp && shellsGot < need && along >= 0) {
+    heldAtCamp = true;
+    z = CONFIG.camp.z;
+    along = 0;
+    if (!campNoted) {
+      campNoted = true;
+      playSound("miss");
+      goalEl.textContent = "Shells left";
+    }
+  } else if (!inCamp && !heldAtCamp) {
+    if (campNoted) goalEl.textContent = CONFIG.goalText || "";
+    campNoted = false;
+  }
+  if (heldAtCamp) {
+    z = CONFIG.camp.z;
+    if (along > 0) along = 0;
+  }
+  if (!heldAtCamp && !inCamp && along > 0 && z >= CONFIG.camp.z) {
+    finish("miss");
+    return;
+  }
 
   const y = groundY(x, z);
   if (y == null) {
@@ -286,7 +354,7 @@ function update(dt) {
   }
   ball.position.set(x, y + CONFIG.ballRadius, z);
   shade.position.set(x, y + 0.03, z);
-  ball.rotation.x -= (cruiseNow / CONFIG.ballRadius) * dt;
+  ball.rotation.x -= (along / CONFIG.ballRadius) * dt;
   ball.rotation.z += (vx / CONFIG.ballRadius) * dt;
 
   const bob = performance.now() * 0.004;
@@ -305,9 +373,6 @@ function update(dt) {
     }
   }
 
-  if (z >= CONFIG.camp.z) {
-    finish(Math.abs(x - CONFIG.camp.x) <= CONFIG.camp.halfWidth ? "win" : "miss");
-  }
 }
 
 function frameCamera(dt, snap) {
@@ -347,6 +412,7 @@ function bindHold(button, side) {
 }
 bindHold(leftBtn, "left");
 bindHold(rightBtn, "right");
+bindHold(backBtn, "back");
 
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
@@ -355,6 +421,9 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   } else if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") {
     keys.right = true;
+    event.preventDefault();
+  } else if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") {
+    keys.back = true;
     event.preventDefault();
   } else if (event.key === "p" || event.key === "P") {
     togglePause();
@@ -367,12 +436,15 @@ window.addEventListener("keydown", (event) => {
 window.addEventListener("keyup", (event) => {
   if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A") keys.left = false;
   if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") keys.right = false;
+  if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") keys.back = false;
 });
 window.addEventListener("blur", () => {
   hold.left = false;
   hold.right = false;
+  hold.back = false;
   keys.left = false;
   keys.right = false;
+  keys.back = false;
 });
 
 function togglePause() {

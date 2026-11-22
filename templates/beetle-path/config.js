@@ -20,8 +20,8 @@ export const CONFIG = {
 
   rows: [
     "EEFEE",
-    "EEWSE",
-    "EEEWE",
+    "EENEE",
+    "ENWEE",
     "EENEE",
     "EEWEE",
   ],
@@ -34,6 +34,7 @@ export const CONFIG = {
     stoneOn: "#ffffff",
     flowerBed: "#ffd0dc",
     path: "#f6d36a",
+    wrong: "#ff7a55",
     arrow: "#3d4a3a",
     beetle: "#d8453c",
     eye: "#241c14",

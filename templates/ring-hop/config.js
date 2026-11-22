@@ -13,7 +13,8 @@ export const CONFIG = {
     moon: "sfx/moon.webm",
   },
   // How close a star must be to the bird, in degrees, to catch it.
-  catchDegrees: 50,
+  // Wide enough that a star sitting with the bird counts.
+  catchDegrees: 74,
 
   levels: [
     {

@@ -20,6 +20,7 @@ const cardGo = document.querySelector("#card-go");
 const goBtn = document.querySelector("#go");
 const pauseBtn = document.querySelector("#pause");
 const resetBtn = document.querySelector("#reset");
+const soundBtn = document.querySelector("#sound");
 
 titleEl.textContent = CONFIG.title;
 goalEl.textContent = CONFIG.goalText || "";
@@ -32,24 +33,30 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   audio.preload = "auto";
   clips.set(name, audio);
 }
-function primeAudio() {
-  const audio = clips.values().next().value;
-  if (!audio) return;
-  audio.volume = 0;
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-  }).catch(() => {});
+let soundOn = true;
+function paintSound() {
+  soundBtn.textContent = soundOn ? "Sound" : "Quiet";
+  soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
 }
-window.addEventListener("pointerdown", primeAudio, { once: true });
-window.addEventListener("keydown", primeAudio, { once: true });
+paintSound();
 function playSound(name) {
+  if (!soundOn) return;
   const audio = clips.get(name);
   if (!audio) return;
+  audio.volume = CONFIG.soundVolume ?? 0.85;
   const node = audio.cloneNode();
-  node.volume = CONFIG.soundVolume ?? 0.85;
+  node.volume = audio.volume;
   node.play().catch(() => {});
 }
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  paintSound();
+  if (!soundOn) {
+    for (const audio of clips.values()) audio.pause();
+    return;
+  }
+  playSound("turn");
+});
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -116,12 +123,14 @@ const pointer = new THREE.Vector2();
 
 function makeArrow() {
   const group = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.34), arrowMat);
+  const mat = arrowMat.clone();
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.34), mat);
   shaft.position.set(0, 0.1, 0.02);
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.24, 4), arrowMat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.24, 4), mat);
   head.rotation.x = -Math.PI / 2;
   head.position.set(0, 0.16, -0.26);
   group.add(shaft, head);
+  group.userData.mat = mat;
   return group;
 }
 
@@ -221,9 +230,13 @@ function paintCursor() {
     const selected = mode !== "play" && tile.c === cursor.c && tile.r === cursor.r;
     let color = CONFIG.colors.stone;
     if (tile.visited) color = CONFIG.colors.path;
-    if (selected) color = CONFIG.colors.stoneOn;
+    if (tile.wrong) color = CONFIG.colors.wrong;
+    else if (selected) color = CONFIG.colors.stoneOn;
     tile.stone.material.color.set(color);
-    tile.stone.position.y = selected ? 0.1 : 0;
+    tile.stone.position.y = tile.wrong ? 0.16 : selected ? 0.1 : 0;
+    if (tile.marker.userData.mat) {
+      tile.marker.userData.mat.color.set(tile.wrong ? "#fffaf0" : CONFIG.colors.arrow);
+    }
   }
 }
 
@@ -252,6 +265,7 @@ function restoreStones() {
         tile.marker.rotation.y = DIRS[letters[r][c]].rot;
         tile.spin = null;
         tile.visited = false;
+        tile.wrong = false;
       }
     }
   }
@@ -297,24 +311,33 @@ function turnTile(c, r) {
   }
 }
 
-function endWalk(kind) {
+function markWrong(at) {
+  for (const tile of tiles) tile.wrong = Boolean(at && tile.c === at.c && tile.r === at.r);
+  paintCursor();
+}
+
+function endWalk(kind, at) {
+  const spot = at || (walk ? { c: walk.c, r: walk.r } : null);
   walk = null;
-  mode = "end";
   paused = false;
   pauseBtn.textContent = "Pause";
   if (kind === "win") {
+    mode = "end";
+    markWrong(null);
     scoreEl.textContent = "Flower";
     playSound("win");
     showCard(CONFIG.winTitle, CONFIG.winBody || "", "Again");
-  } else if (kind === "loop") {
-    scoreEl.textContent = "Loop";
-    playSound("loop");
-    showCard(CONFIG.loopTitle, "", "Keep going");
-  } else {
-    scoreEl.textContent = "Off the path";
-    playSound("off");
-    showCard(CONFIG.offTitle, "", "Keep going");
+    return;
   }
+  mode = "ready";
+  hideCard();
+  if (spot && tileAt(spot.c, spot.r)) {
+    cursor = { c: spot.c, r: spot.r };
+    placeBeetle(spot.c, spot.r);
+    markWrong(spot);
+  }
+  scoreEl.textContent = kind === "loop" ? "Loop" : "Off the path";
+  playSound(kind === "loop" ? "loop" : "off");
 }
 
 function beginWalk() {
@@ -328,7 +351,10 @@ function beginWalk() {
   paused = false;
   pauseBtn.textContent = "Pause";
   seen = new Set();
-  for (const tile of tiles) tile.visited = false;
+  for (const tile of tiles) {
+    tile.visited = false;
+    tile.wrong = false;
+  }
   paintCursor();
   const start = {
     c: Math.max(0, Math.min(width - 1, CONFIG.start.c)),
@@ -351,6 +377,12 @@ function stepWalk(dt) {
     );
     beetle.position.set(pos.x, 0.34 + Math.sin(Math.PI * u) * 0.16, pos.z + 0.34);
     if (u >= 1) {
+      if (walk.moving.off) {
+        const from = walk.moving.from;
+        walk.moving = null;
+        endWalk("off", from);
+        return;
+      }
       walk.c = walk.moving.to.c;
       walk.r = walk.moving.to.r;
       walk.moving = null;

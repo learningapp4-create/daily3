@@ -19,8 +19,12 @@ export const CONFIG = {
   steer: 5.4,
   // Slows sideways drift. Higher settles sooner.
   drag: 1.15,
-  // Metres per second along the dune.
+  // Metres per second along the dune, toward the camp.
   cruise: 2.15,
+  // Metres per second when Back is held. The ball slows through a stop first.
+  back: 1.7,
+  // How fast the ball can slow down or speed up.
+  brake: 6,
   // Seconds to ease from a standstill into full speed when a round starts.
   easeSeconds: 1.1,
   // How far apart the two height samples are when reading the slope.
@@ -30,6 +34,8 @@ export const CONFIG = {
   startZ: 4.6,
   ballRadius: 0.22,
   shellRadius: 0.85,
+  // Shells still on the sand mean the camp is not won yet.
+  goalShells: 6,
 
   // x is left/right. z points toward the camp. The camp catches the middle.
   // A right pair, then a left shell further on, so one steer can take a bank
@@ -52,8 +58,9 @@ export const CONFIG = {
     sand: "#e7c98a",
     ball: "#f4f7fb",
     ballSpot: "#7ec8e3",
-    shell: "#12c4a8",
-    pickup: "#ffe56a",
+    shell: "#fff6ec",
+    shellRidge: "#f09a4a",
+    shellMouth: "#e4544a",
     camp: "#e23d3d",
     flag: "#fff4d6",
   },
