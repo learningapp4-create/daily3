@@ -84,7 +84,26 @@ const moonHalo = new THREE.Mesh(
 moonHalo.rotation.x = Math.PI / 2;
 scene.add(moon, moonHalo);
 
-const starGeo = new THREE.OctahedronGeometry(0.26, 0);
+function makeStarGeometry() {
+  const shape = new THREE.Shape();
+  const spikes = 5;
+  const outer = 0.5;
+  const inner = 0.2;
+  for (let i = 0; i < spikes * 2; i += 1) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = -Math.PI / 2 + (i * Math.PI) / spikes;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false, curveSegments: 1 });
+  geo.translate(0, 0, -0.06);
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
+const starGeo = makeStarGeometry();
 const starMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.star });
 const ringGroups = [];
 const ringMeshes = [];
@@ -421,8 +440,11 @@ function finish() {
 }
 
 function walk(dt) {
-  const dir = (walkKeys.right ? 1 : 0) + (walkKeys.left ? -1 : 0);
-  if (dir !== 0) faceSign = dir;
+  const now = performance.now();
+  let dir = 0;
+  if (walkKeys.right && now - heldSince.right > 180) dir += 1;
+  if (walkKeys.left && now - heldSince.left > 180) dir -= 1;
+  if (dir !== 0) faceSign = dir > 0 ? 1 : -1;
   birdTheta += dir * level().walkSpeed * dt;
 }
 
@@ -474,26 +496,27 @@ function frame(now) {
   renderer.render(scene, camera);
 }
 
-const pressAt = { left: 0, right: 0 };
+const heldSince = { left: 0, right: 0 };
 
 function stepWalk(key) {
+  if (mode !== "play" || paused || hopping) return;
   const dir = key === "right" ? 1 : -1;
   faceSign = dir;
-  birdTheta += dir * (CONFIG.tapStep ?? 0.8);
+  birdTheta += dir * (CONFIG.tapStep ?? 1.05);
 }
 
 function holdWalk(button, key) {
   const down = (event) => {
     event.preventDefault();
+    if (heldSince[key]) return;
+    heldSince[key] = performance.now();
     walkKeys[key] = true;
     faceSign = key === "right" ? 1 : -1;
-    pressAt[key] = performance.now();
+    stepWalk(key);
   };
   const up = () => {
-    const started = pressAt[key];
     walkKeys[key] = false;
-    pressAt[key] = 0;
-    if (started && performance.now() - started < 280) stepWalk(key);
+    heldSince[key] = 0;
   };
   button.addEventListener("pointerdown", down);
   button.addEventListener("pointerup", up);
@@ -536,8 +559,11 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
     event.preventDefault();
     const key = event.key === "ArrowLeft" ? "left" : "right";
-    walkKeys[key] = true;
-    if (!event.repeat && !pressAt[key]) pressAt[key] = performance.now();
+    if (!walkKeys[key]) {
+      walkKeys[key] = true;
+      heldSince[key] = performance.now();
+      stepWalk(key);
+    }
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
     if (!event.repeat) hopIn();
@@ -556,14 +582,14 @@ window.addEventListener("keydown", (event) => {
 window.addEventListener("keyup", (event) => {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
   const key = event.key === "ArrowLeft" ? "left" : "right";
-  const started = pressAt[key];
   walkKeys[key] = false;
-  pressAt[key] = 0;
-  if (started && performance.now() - started < 280) stepWalk(key);
+  heldSince[key] = 0;
 });
 window.addEventListener("blur", () => {
   walkKeys.left = false;
   walkKeys.right = false;
+  heldSince.left = 0;
+  heldSince.right = 0;
 });
 
 resetRound();

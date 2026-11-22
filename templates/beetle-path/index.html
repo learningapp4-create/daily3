@@ -42,6 +42,7 @@
     }
     button:focus-visible { outline: 3px solid #2f8f4e; outline-offset: 2px; }
     #go, .panel button { background: #3f8f4a; color: #f4fff4; min-width: 8.5rem; }
+    #undo.ready { background: #ffd45a; }
     #sound { min-width: 5.6rem; color: #1d2a18; background: #fffaf0; }
     #sound[aria-pressed="false"] { background: #d9d3c7; }
     .card {
@@ -77,6 +78,7 @@
   <canvas id="view"></canvas>
   <footer>
     <button type="button" id="go">Go</button>
+    <button type="button" id="undo">Undo</button>
     <button type="button" id="pause">Pause</button>
     <button type="button" id="reset">Reset</button>
   </footer>

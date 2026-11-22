@@ -15,8 +15,8 @@ export const CONFIG = {
   // How close a star must be to the bird, in degrees, to catch it.
   // A star anywhere near the bird on the same ring counts.
   catchDegrees: 118,
-  // How far one tap of Left or Right walks, in radians.
-  tapStep: 0.8,
+  // How far one press of Left or Right steps, in radians. The step happens on the press.
+  tapStep: 1.05,
 
   levels: [
     {
@@ -58,7 +58,7 @@ export const CONFIG = {
     sky: "#1c1b4a",
     ring: "#7ea2d6",
     ringOn: "#f6fbff",
-    star: "#ffd45a",
+    star: "#fff3b0",
     bird: "#ffe7a3",
     beak: "#ff8a3d",
     wing: "#f0c56e",

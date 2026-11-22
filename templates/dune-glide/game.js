@@ -14,6 +14,7 @@ const pauseBtn = document.querySelector("#pause");
 const leftBtn = document.querySelector("#left");
 const rightBtn = document.querySelector("#right");
 const backBtn = document.querySelector("#back");
+const stopBtn = document.querySelector("#stop");
 const soundBtn = document.querySelector("#sound");
 
 titleEl.textContent = CONFIG.title;
@@ -171,6 +172,7 @@ let along = 0;
 let campNoted = false;
 let retreatTo = null;
 let backTapTo = null;
+let rolling = true;
 let last = performance.now();
 
 function resize() {
@@ -241,6 +243,8 @@ function resetRound() {
   campNoted = false;
   retreatTo = null;
   backTapTo = null;
+  rolling = true;
+  paintStop();
   goalEl.textContent = CONFIG.goalText || "";
   paused = false;
   pauseBtn.textContent = "Pause";
@@ -291,9 +295,16 @@ function update(dt) {
     return;
   }
   const slope = (yR - yL) / (2 * span);
-  vx += (-slope * CONFIG.slide + steerInput() * CONFIG.steer) * dt;
-  vx *= Math.exp(-CONFIG.drag * dt);
-  vx = Math.max(-CONFIG.maxSideSpeed, Math.min(CONFIG.maxSideSpeed, vx));
+  const backHeld = hold.back || keys.back;
+  const backing = backHeld || retreatTo != null || (backTapTo != null && z > backTapTo);
+  const stopped = !rolling && !backing;
+  if (stopped) {
+    vx = 0;
+  } else {
+    vx += (-slope * CONFIG.slide + steerInput() * CONFIG.steer) * dt;
+    vx *= Math.exp(-CONFIG.drag * dt);
+    vx = Math.max(-CONFIG.maxSideSpeed, Math.min(CONFIG.maxSideSpeed, vx));
+  }
 
   const nextX = x + vx * dt;
   if (groundY(nextX, z) == null) {
@@ -304,9 +315,7 @@ function update(dt) {
   const ease = CONFIG.easeSeconds > 0 ? Math.min(1, rollIn / CONFIG.easeSeconds) : 1;
   rollIn += dt;
   const forward = CONFIG.cruise * ease * ease;
-  const backHeld = hold.back || keys.back;
-  const backing = backHeld || retreatTo != null || (backTapTo != null && z > backTapTo);
-  const target = backing ? -(CONFIG.back ?? 1.7) : forward;
+  const target = backing ? -(CONFIG.back ?? 1.7) : stopped ? 0 : forward;
   const brake = CONFIG.brake ?? 6;
   if (along < target) along = Math.min(target, along + brake * dt);
   else along = Math.max(target, along - brake * dt);
@@ -328,7 +337,7 @@ function update(dt) {
     finish("win");
     return;
   }
-  if (retreatTo == null && !backHeld && inCamp && shellsGot < need && along >= 0) {
+  if (retreatTo == null && rolling && !backHeld && inCamp && shellsGot < need && along >= 0) {
     retreatTo = Math.max(CONFIG.startZ, z - (CONFIG.retreat ?? 8));
     along = -(CONFIG.back ?? 1.7);
     campNoted = true;
@@ -416,6 +425,22 @@ function shoveBack() {
 }
 backBtn.addEventListener("pointerdown", shoveBack);
 
+function paintStop() {
+  stopBtn.textContent = rolling ? "Stop" : "Roll";
+  stopBtn.classList.toggle("roll", !rolling);
+}
+function toggleRoll() {
+  if (mode !== "play") return;
+  rolling = !rolling;
+  if (!rolling) {
+    backTapTo = null;
+    retreatTo = null;
+  }
+  paintStop();
+}
+stopBtn.addEventListener("click", toggleRoll);
+paintStop();
+
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
   if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A") {
@@ -428,6 +453,9 @@ window.addEventListener("keydown", (event) => {
     keys.back = true;
     shoveBack();
     event.preventDefault();
+  } else if (event.key === " " && card.hidden) {
+    event.preventDefault();
+    toggleRoll();
   } else if (event.key === "p" || event.key === "P") {
     togglePause();
   } else if (event.key === "r" || event.key === "R") {
