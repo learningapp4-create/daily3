@@ -23,6 +23,8 @@ export const CONFIG = {
   cruise: 2.15,
   // Metres per second when Back is held. The ball slows through a stop first.
   back: 1.7,
+  // Metres one tap of Back rolls the ball back up the dune.
+  backTap: 2.6,
   // How fast the ball can slow down or speed up.
   brake: 6,
   // Seconds to ease from a standstill into full speed when a round starts.
@@ -33,20 +35,21 @@ export const CONFIG = {
 
   startZ: 4.6,
   ballRadius: 0.22,
-  shellRadius: 0.85,
+  shellRadius: 1.15,
   // Shells still on the sand mean the camp is not won yet.
   goalShells: 6,
+  // How far the ball rolls back up the dune when it reaches camp early.
+  retreat: 8,
 
   // x is left/right. z points toward the camp. The camp catches the middle.
-  // A right pair, then a left shell further on, so one steer can take a bank
-  // and still roll back to the middle before camp.
+  // These sit in the lane, so a straight roll can pick them up.
   shells: [
-    { x: 0, z: 9 },
-    { x: 0, z: 17 },
-    { x: 0, z: 23.3 },
-    { x: 2.15, z: 11.2 },
-    { x: 2.1, z: 12.8 },
-    { x: -1.6, z: 19.6 },
+    { x: 0, z: 8.2 },
+    { x: 0.45, z: 11.4 },
+    { x: -0.45, z: 14.6 },
+    { x: 0.35, z: 17.6 },
+    { x: -0.35, z: 20.4 },
+    { x: 0, z: 22.8 },
   ],
   camp: { x: 0, z: 24.4, halfWidth: 1.45 },
 

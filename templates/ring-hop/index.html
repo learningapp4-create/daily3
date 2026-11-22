@@ -44,6 +44,8 @@
     }
     button:focus-visible { outline: 3px solid #ffd45a; outline-offset: 2px; }
     #catch.ready, #moon, .panel button { background: #ffd45a; }
+    #catch.ready { animation: catchpulse 0.55s ease-in-out infinite; }
+    @keyframes catchpulse { 50% { transform: scale(1.1); } }
     #sound { min-width: 5.6rem; }
     #sound[aria-pressed="false"] { background: #d9d3c7; }
     button[hidden] { display: none; }

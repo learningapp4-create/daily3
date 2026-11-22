@@ -20,10 +20,10 @@ export const CONFIG = {
 
   rows: [
     "EEFEE",
-    "EENEE",
-    "ENWEE",
-    "EENEE",
-    "EEWEE",
+    "NNNEE",
+    "NNNEE",
+    "NNNEE",
+    "WWWEE",
   ],
   start: { c: 2, r: 4 },
 

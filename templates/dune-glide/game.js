@@ -169,7 +169,8 @@ let shellsGot = 0;
 let rollIn = 0;
 let along = 0;
 let campNoted = false;
-let heldAtCamp = false;
+let retreatTo = null;
+let backTapTo = null;
 let last = performance.now();
 
 function resize() {
@@ -238,7 +239,8 @@ function resetRound() {
   shellsGot = 0;
   along = 0;
   campNoted = false;
-  heldAtCamp = false;
+  retreatTo = null;
+  backTapTo = null;
   goalEl.textContent = CONFIG.goalText || "";
   paused = false;
   pauseBtn.textContent = "Pause";
@@ -303,8 +305,8 @@ function update(dt) {
   rollIn += dt;
   const forward = CONFIG.cruise * ease * ease;
   const backHeld = hold.back || keys.back;
-  if (heldAtCamp && backHeld) heldAtCamp = false;
-  const target = heldAtCamp ? 0 : backHeld ? -(CONFIG.back ?? 1.7) : forward;
+  const backing = backHeld || retreatTo != null || (backTapTo != null && z > backTapTo);
+  const target = backing ? -(CONFIG.back ?? 1.7) : forward;
   const brake = CONFIG.brake ?? 6;
   if (along < target) along = Math.min(target, along + brake * dt);
   else along = Math.max(target, along - brake * dt);
@@ -316,7 +318,8 @@ function update(dt) {
 
   const need = CONFIG.goalShells ?? shells.length;
   const inCamp = z >= CONFIG.camp.z && Math.abs(x - CONFIG.camp.x) <= CONFIG.camp.halfWidth;
-  if (inCamp && shellsGot >= need && along >= 0) {
+  if (shellsGot >= need && goalEl.textContent === "Shells left") goalEl.textContent = CONFIG.goalText || "";
+  if (inCamp && shellsGot >= need && along >= 0 && retreatTo == null) {
     const yWin = groundY(x, z);
     if (yWin != null) {
       ball.position.set(x, yWin + CONFIG.ballRadius, z);
@@ -325,24 +328,16 @@ function update(dt) {
     finish("win");
     return;
   }
-  if (!heldAtCamp && !backHeld && inCamp && shellsGot < need && along >= 0) {
-    heldAtCamp = true;
-    z = CONFIG.camp.z;
-    along = 0;
-    if (!campNoted) {
-      campNoted = true;
-      playSound("miss");
-      goalEl.textContent = "Shells left";
-    }
-  } else if (!inCamp && !heldAtCamp) {
-    if (campNoted) goalEl.textContent = CONFIG.goalText || "";
-    campNoted = false;
+  if (retreatTo == null && !backHeld && inCamp && shellsGot < need && along >= 0) {
+    retreatTo = Math.max(CONFIG.startZ, z - (CONFIG.retreat ?? 8));
+    along = -(CONFIG.back ?? 1.7);
+    campNoted = true;
+    playSound("miss");
+    goalEl.textContent = "Shells left";
   }
-  if (heldAtCamp) {
-    z = CONFIG.camp.z;
-    if (along > 0) along = 0;
-  }
-  if (!heldAtCamp && !inCamp && along > 0 && z >= CONFIG.camp.z) {
+  if (retreatTo != null && z <= retreatTo) retreatTo = null;
+  if (backTapTo != null && z <= backTapTo) backTapTo = null;
+  if (retreatTo == null && !inCamp && along > 0 && z >= CONFIG.camp.z) {
     finish("miss");
     return;
   }
@@ -360,7 +355,9 @@ function update(dt) {
   const bob = performance.now() * 0.004;
   for (const shell of shells) {
     if (shell.got) continue;
-    shell.mesh.position.y = shell.baseY + Math.sin(bob + shell.z) * 0.1;
+    const wave = campNoted ? 0.22 : 0.1;
+    shell.mesh.position.y = shell.baseY + Math.sin(bob + shell.z) * wave;
+    shell.mesh.scale.setScalar(campNoted ? 2.45 : 1.85);
     const dx = x - shell.x;
     const dz = z - shell.z;
     if (dx * dx + dz * dz <= CONFIG.shellRadius * CONFIG.shellRadius) {
@@ -413,6 +410,11 @@ function bindHold(button, side) {
 bindHold(leftBtn, "left");
 bindHold(rightBtn, "right");
 bindHold(backBtn, "back");
+function shoveBack() {
+  backTapTo = Math.max(CONFIG.startZ, z - (CONFIG.backTap ?? 2.6));
+  along = Math.min(along, -(CONFIG.back ?? 1.7));
+}
+backBtn.addEventListener("pointerdown", shoveBack);
 
 window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
@@ -424,6 +426,7 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   } else if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") {
     keys.back = true;
+    shoveBack();
     event.preventDefault();
   } else if (event.key === "p" || event.key === "P") {
     togglePause();

@@ -8,8 +8,10 @@ Edit `config.js`.
 
 - `cruise` — how fast the marble rolls toward the camp
 - `back` and `brake` — reverse speed, and how quickly a hold slows the marble through a stop
+- `backTap` — how far one tap of Back rolls the marble up the dune
 - `easeSeconds` — how long the marble takes to reach cruise speed at the start
 - `goalShells` — how many shells the camp counts as a win
+- `retreat` — how far the ball rolls back up the dune if shells are still out
 - `steer` and `slide` — how hard you push, and how hard the banks push back
 - `shells` — `{ x, z }` spots. `x` is left/right, `z` points toward the camp
 - `camp.halfWidth` — how wide the finish circle is

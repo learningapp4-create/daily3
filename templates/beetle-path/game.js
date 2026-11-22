@@ -446,6 +446,11 @@ function frame(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   spinMarkers(dt);
+  for (const tile of tiles) {
+    if (tile.flower) continue;
+    const s = tile.wrong ? 1 + Math.sin(now * 0.012) * 0.22 : 1;
+    tile.marker.scale.setScalar(s);
+  }
   if (flowerTile) flowerTile.marker.position.y = 0.18 + Math.sin(now * 0.003) * 0.05;
   if (mode === "play") {
     stepWalk(dt);

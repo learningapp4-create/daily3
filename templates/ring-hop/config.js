@@ -13,8 +13,10 @@ export const CONFIG = {
     moon: "sfx/moon.webm",
   },
   // How close a star must be to the bird, in degrees, to catch it.
-  // Wide enough that a star sitting with the bird counts.
-  catchDegrees: 74,
+  // A star anywhere near the bird on the same ring counts.
+  catchDegrees: 118,
+  // How far one tap of Left or Right walks, in radians.
+  tapStep: 0.8,
 
   levels: [
     {
