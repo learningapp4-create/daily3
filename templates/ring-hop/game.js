@@ -191,20 +191,64 @@ let starsGot = 0;
 let hopping = null;
 let last = performance.now();
 
+const fitPoint = new THREE.Vector3();
+let fitKey = "";
+
 function resize() {
   const w = window.innerWidth;
   const h = Math.max(1, window.innerHeight);
+  const headerH = document.querySelector("header")?.offsetHeight ?? 72;
+  const footerH = document.querySelector("footer")?.offsetHeight ?? 88;
+  const reach = (rings()[0]?.radius ?? 5.5) + 1.25;
+  const key = `${w}x${h}:${headerH}:${footerH}:${reach}`;
+  if (key === fitKey) return;
+  fitKey = key;
+
   camera.aspect = w / h;
-  camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
-  const outer = rings()[0].radius + 1.3;
-  const half = Math.tan((camera.fov * Math.PI) / 360);
-  const aspect = w / h;
-  let dist = Math.hypot(8.2, 7.6);
-  const visible = half * dist * aspect;
-  if (visible < outer) dist *= outer / visible;
-  camera.position.set(0, (8.2 / Math.hypot(8.2, 7.6)) * dist, (7.6 / Math.hypot(8.2, 7.6)) * dist);
-  camera.lookAt(0, 0, 0);
+  const clear = {
+    left: 14,
+    right: w - 14,
+    top: headerH + 10,
+    bottom: h - footerH - 12,
+  };
+  const len = Math.hypot(8.2, 7.6);
+  let dist = len;
+  let lookZ = 0;
+
+  const bounds = () => {
+    camera.position.set(0, (8.2 / len) * dist, (7.6 / len) * dist);
+    camera.lookAt(0, 0, lookZ);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < 16; i += 1) {
+      const a = (i / 16) * Math.PI * 2;
+      fitPoint.set(Math.cos(a) * reach, 0.35, Math.sin(a) * reach);
+      const p = fitPoint.clone().project(camera);
+      const x = (p.x * 0.5 + 0.5) * w;
+      const y = (1 - p.y) * 0.5 * h;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    return { minX, maxX, minY, maxY };
+  };
+
+  for (let n = 0; n < 32; n += 1) {
+    const box = bounds();
+    const wide = box.minX < clear.left || box.maxX > clear.right;
+    const high = box.minY < clear.top;
+    const low = box.maxY > clear.bottom;
+    if (!wide && !high && !low) break;
+    if (wide || (high && low)) dist *= 1.07;
+    else if (low && lookZ < reach * 0.55) lookZ += 0.32;
+    else dist *= 1.07;
+  }
 }
 window.addEventListener("resize", resize);
 resize();
@@ -497,6 +541,7 @@ function update(dt) {
 
 function frame(now) {
   requestAnimationFrame(frame);
+  resize();
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt);
