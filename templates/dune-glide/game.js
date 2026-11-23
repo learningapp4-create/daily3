@@ -471,15 +471,19 @@ function smoothStep(u) {
   return u * u * (3 - 2 * u);
 }
 
-function quadPoint(p0, p1, p2, u) {
-  const a = p0.clone().lerp(p1, u);
-  const b = p1.clone().lerp(p2, u);
-  return a.lerp(b, u);
-}
+const skyRay = new THREE.Vector3();
+const FLAG_CORNERS = [
+  [-0.01, 0.62, 0],
+  [0.41, 0.62, 0],
+  [-0.01, 0.88, 0],
+  [0.41, 0.88, 0],
+  [0, 0.02, 0],
+  [0, 0.9, 0],
+];
 
 function easeFromGroup(t, y, cam) {
-  // Dolly in along the valley view so the ball grows where it already sits, then orbit
-  // behind it. Looking at the ball while the camera is still far turns it into a dot.
+  // Dolly in along the valley so the ball grows where it sits, then slide behind it
+  // along the valley. A side swing tips onto the sand and cuts the flag at the corner.
   const base = flag.position.y;
   const groupPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
   const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
@@ -491,31 +495,118 @@ function easeFromGroup(t, y, cam) {
   const dir = toBall.multiplyScalar(1 / dist);
   const travel = Math.max(0, dist - 4.8);
   const lookOffset = groupLook.clone().sub(groupPos);
-  if (t < 0.34) {
-    const u = 1 - (1 - t / 0.34) ** 2.4;
+  if (t < 0.36) {
+    const u = 1 - (1 - t / 0.36) ** 2.4;
     const pos = groupPos.clone().addScaledVector(dir, travel * u);
     camera.position.copy(pos);
     camera.lookAt(pos.clone().add(lookOffset));
     return;
   }
-  const u = smoothStep((t - 0.34) / 0.66);
+  // Cross the short stretch beside the ball quickly. Lingering there tips the view onto the sand.
+  const u = t < 0.52 ? (t - 0.36) / 0.16 * 0.22 : 0.22 + smoothStep((t - 0.52) / 0.48) * 0.78;
   const near = groupPos.clone().addScaledVector(dir, travel);
-  const side = x >= 0 ? 1 : -1;
-  const apex = new THREE.Vector3(x + side * 3.4, y + cam.up + 1.1, z + 0.6);
-  let pos = quadPoint(near, apex, chasePos, u);
-  const offset = pos.clone().sub(ballPos);
-  if (offset.length() < 4.4) {
-    offset.setLength(4.4);
-    pos = ballPos.clone().add(offset);
-  }
+  const pos = near.clone().lerp(chasePos, u);
+  pos.y = Math.max(pos.y, y + cam.up);
   const valley = lookOffset.clone().normalize();
-  const atBall = ballPos.clone().sub(pos).normalize();
-  const ahead = chaseLook.clone().sub(pos).normalize();
-  const gaze = u < 0.42
-    ? valley.lerp(atBall, smoothStep(u / 0.42))
-    : atBall.lerp(ahead, smoothStep((u - 0.42) / 0.58));
+  const look = pos.clone().addScaledVector(valley, 8).lerp(chaseLook, smoothStep(u));
+  const ahead = Math.max(1.4, Math.hypot(look.x - pos.x, look.z - pos.z));
+  if (pos.y - look.y > ahead * 0.48) look.y = pos.y - ahead * 0.48;
   camera.position.copy(pos);
-  camera.lookAt(pos.clone().add(gaze));
+  holdSkyAndFlag(look, pos.z < z - 0.6);
+  camera.updateMatrixWorld();
+  // The stretch beside the ball cannot show the sky and the ball together. Settle on the chase view instead of an empty dune.
+  if (!ballOnScreen()) {
+    camera.position.copy(chasePos);
+    camera.lookAt(chaseLook);
+  }
+}
+
+function ballOnScreen() {
+  shellPoint.set(x, ball.position.y, z).project(camera);
+  return shellPoint.z > -1 && shellPoint.z < 1
+    && shellPoint.y > -0.55 && shellPoint.y < 0.8
+    && Math.abs(shellPoint.x) < 0.85;
+}
+
+function topIsSky() {
+  shellPoint.set(0, 0.58, 0.5).unproject(camera);
+  skyRay.copy(shellPoint).sub(camera.position);
+  if (skyRay.lengthSq() < 1e-6) return false;
+  skyRay.normalize();
+  if (skyRay.y > 0.02) return true;
+  raycaster.set(camera.position, skyRay);
+  const hits = dune ? raycaster.intersectObject(dune, true) : [];
+  return hits.length === 0 || hits[0].distance > 16;
+}
+
+function flagFrame() {
+  const origin = flag.position;
+  const scale = flag.scale.x || 1;
+  let seen = 0;
+  let inside = 0;
+  let onScreen = 0;
+  for (let i = 0; i < FLAG_CORNERS.length; i += 1) {
+    const corner = FLAG_CORNERS[i];
+    shellPoint.set(origin.x + corner[0] * scale, origin.y + corner[1] * scale, origin.z + corner[2] * scale);
+    shellPoint.project(camera);
+    if (shellPoint.z < -1 || shellPoint.z > 1) continue;
+    seen += 1;
+    const on = Math.abs(shellPoint.x) < 1 && shellPoint.y < 1 && shellPoint.y > -1;
+    const fit = Math.abs(shellPoint.x) < 0.82 && shellPoint.y < 0.7 && shellPoint.y > -0.78;
+    if (on) onScreen += 1;
+    if (fit) inside += 1;
+    if (on && !fit) return "cut";
+  }
+  if (!seen || onScreen === 0) return "out";
+  if (inside === seen) return "in";
+  return "cut";
+}
+
+function capPitch(look) {
+  const ahead = Math.max(1.4, Math.hypot(look.x - camera.position.x, look.z - camera.position.z));
+  const maxDrop = ahead * 0.48;
+  if (camera.position.y - look.y > maxDrop) look.y = camera.position.y - maxDrop;
+}
+
+function holdSkyAndFlag(look, wantFlag) {
+  const flagAim = new THREE.Vector3(flag.position.x, flag.position.y + 1.7, flag.position.z - 1.2);
+  for (let n = 0; n < 8; n += 1) {
+    capPitch(look);
+    camera.lookAt(look);
+    camera.updateMatrixWorld();
+    if (!topIsSky()) {
+      look.y += 0.35;
+      continue;
+    }
+    const framed = flagFrame();
+    if (framed === "cut") {
+      look.lerp(wantFlag ? flagAim : new THREE.Vector3(x, camera.position.y, z - 5), 0.45);
+      continue;
+    }
+    if (wantFlag && framed === "out") {
+      look.lerp(flagAim, 0.35);
+      continue;
+    }
+    for (let step = 0; step < 6; step += 1) {
+      shellPoint.set(x, ball.position.y, z).project(camera);
+      const ballHigh = shellPoint.z > -1 && shellPoint.z < 1 && shellPoint.y > -0.45 && shellPoint.y < 0.72 && Math.abs(shellPoint.x) < 0.8;
+      if (ballHigh) break;
+      const kept = look.y;
+      look.y -= 0.18;
+      capPitch(look);
+      if (look.y === kept) break;
+      camera.lookAt(look);
+      camera.updateMatrixWorld();
+      if (!topIsSky() || flagFrame() === "cut") {
+        look.y = kept;
+        camera.lookAt(look);
+        break;
+      }
+    }
+    return;
+  }
+  capPitch(look);
+  camera.lookAt(look);
 }
 
 const shellBox = new THREE.Box3();
