@@ -402,8 +402,8 @@ function frameCamera(dt, snap) {
     shell.mesh.visible = true;
     shell.mesh.position.x = shell.x;
     shell.mesh.position.z = shell.z;
-    // The near slope hides the lower part of a shell. Grow those scallops up from the sand so the ridges clear it. Shells by the camp are already in view, and stay the same height so one does not cover the next.
-    const grown = shell.z < 12 ? 1.75 : shell.z < 19 ? 1.5 : 1.15;
+    // The first shell sits behind a higher lip at the start, so it grows a little more. The rest stay as they are, so a close shell does not cover the next.
+    const grown = shell.z < 9 ? 2.2 : shell.z < 12 ? 1.75 : shell.z < 19 ? 1.5 : 1.15;
     shell.mesh.scale.set(1.15, grown, 1.15);
     shell.mesh.rotation.set(0, 0, 0);
     const bob = Math.sin(performance.now() * 0.004 + shell.z) * 0.08;
@@ -450,7 +450,7 @@ function paintStop() {
   stopBtn.classList.toggle("roll", !rolling);
 }
 function toggleRoll() {
-  if (mode !== "play") return;
+  if (mode !== "play" || paused) return;
   rolling = !rolling;
   if (!rolling) {
     backTapTo = null;
