@@ -11,21 +11,27 @@ export const CONFIG = {
     sink: "sfx/sink.webm",
   },
 
-  // The throw. Angle 0 points straight at the pad.
-  startAngle: -0.36,
+  // The throw. Angle 0 points straight up the pond, between the flowers.
+  startAngle: 0,
   angleStep: 0.12,
-  angleMin: -0.7,
-  angleMax: 0.7,
+  angleMin: -0.72,
+  angleMax: 0.72,
   speed: 9.2,
   lift: 1.6,
   gravity: 6.2,
   bounce: 0.72,
   sinkSpeed: 3.8,
   maxSkips: 8,
+  // Aim dots stop here. They show the opening of the skip, not the landing.
+  aimReach: 4.2,
 
   start: { x: 0, y: 0.45, z: 0.2 },
   waterY: 0.02,
-  pad: { x: 0, y: 0.08, z: 10.5, radius: 1.55 },
+  pads: [
+    { x: -2.15, y: 0.08, z: 9.55, radius: 1.55 },
+    { x: 2.15, y: 0.08, z: 9.55, radius: 1.55 },
+    { x: 3.5, y: 0.08, z: 13.05, radius: 1.48 },
+  ],
 
   colors: {
     sky: "#b7e3fb",
@@ -42,6 +48,6 @@ export const CONFIG = {
 
   readyTitle: "Pond Skip",
   readyBody: "",
-  winTitle: "The stone reached the pad",
+  winTitle: "The stone reached the pads",
   winBody: "",
 };

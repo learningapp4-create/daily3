@@ -79,7 +79,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.sky);
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 140);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.82));
 const sun = new THREE.DirectionalLight(0xfff6e0, 0.7);
@@ -253,8 +253,8 @@ function markMissed(garden) {
 }
 
 function placeCamera() {
-  camera.position.set(11.2, 3.15, along - 2.2);
-  camera.lookAt(-1.3, 2.2, along + 1.1);
+  camera.position.set(4.8, 4.4, along - 6.2);
+  camera.lookAt(-2, 1.3, along + 1);
 }
 
 function changeHeight(dir) {

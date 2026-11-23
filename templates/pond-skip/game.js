@@ -106,38 +106,49 @@ water.position.set(0, 0, 9.8);
 scene.add(water);
 
 const deep = new THREE.Mesh(
-  new THREE.CircleGeometry(5.6, 22),
+  new THREE.CircleGeometry(6.6, 24),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.waterDeep }),
 );
 deep.rotation.x = -Math.PI / 2;
-deep.position.set(0, 0.012, 10.2);
+deep.position.set(0, 0.012, 10.4);
 scene.add(deep);
 
-const pad = new THREE.Mesh(
-  new THREE.CircleGeometry(CONFIG.pad.radius, 16),
-  new THREE.MeshLambertMaterial({ color: CONFIG.colors.pad }),
-);
-pad.rotation.x = -Math.PI / 2;
-pad.position.set(CONFIG.pad.x, CONFIG.pad.y, CONFIG.pad.z);
-scene.add(pad);
-
-const flower = new THREE.Group();
 const petalMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.flower });
-for (let i = 0; i < 6; i += 1) {
-  const petal = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), petalMat);
-  const a = (i / 6) * Math.PI * 2;
-  petal.position.set(Math.cos(a) * 0.28, 0.1, Math.sin(a) * 0.28);
-  petal.scale.set(1, 0.42, 0.65);
-  flower.add(petal);
+const heartMat = new THREE.MeshLambertMaterial({ color: "#f2d34a" });
+const markerMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.stone });
+function makeFlower(x, y, z, turn) {
+  const group = new THREE.Group();
+  for (let i = 0; i < 6; i += 1) {
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), petalMat);
+    const a = (i / 6) * Math.PI * 2;
+    petal.position.set(Math.cos(a) * 0.28, 0.1, Math.sin(a) * 0.28);
+    petal.scale.set(1, 0.42, 0.65);
+    group.add(petal);
+  }
+  const heart = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), heartMat);
+  heart.position.y = 0.16;
+  group.add(heart);
+  group.position.set(x, y, z);
+  group.rotation.y = turn;
+  scene.add(group);
+  return group;
 }
-const heart = new THREE.Mesh(
-  new THREE.SphereGeometry(0.15, 8, 6),
-  new THREE.MeshLambertMaterial({ color: "#f2d34a" }),
-);
-heart.position.y = 0.16;
-flower.add(heart);
-flower.position.set(CONFIG.pad.x, CONFIG.pad.y, CONFIG.pad.z);
-scene.add(flower);
+const pads = CONFIG.pads.map((spec, index) => {
+  const mesh = new THREE.Mesh(
+    new THREE.CircleGeometry(spec.radius, 16),
+    new THREE.MeshLambertMaterial({ color: CONFIG.colors.pad }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(spec.x, spec.y, spec.z);
+  scene.add(mesh);
+  const flower = makeFlower(spec.x, spec.y, spec.z, index * 0.7);
+  const marker = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), markerMat);
+  marker.scale.set(1.15, 0.45, 0.9);
+  marker.position.set(spec.x, spec.y + 0.22, spec.z - 0.42);
+  marker.visible = false;
+  scene.add(marker);
+  return { ...spec, mesh, flower, marker, reached: false };
+});
 
 const leafMat = new THREE.MeshLambertMaterial({ color: "#9aaa52" });
 function floatingLeaves(x, z, turn) {
@@ -154,9 +165,9 @@ function floatingLeaves(x, z, turn) {
   clump.rotation.y = turn;
   scene.add(clump);
 }
-floatingLeaves(-4.4, 6.4, 0.5);
-floatingLeaves(4.5, 8.8, -0.7);
-floatingLeaves(4.1, 12.6, 0.3);
+floatingLeaves(-4.6, 6.2, 0.5);
+floatingLeaves(5.3, 7.2, -0.7);
+floatingLeaves(-5.2, 11.4, 0.9);
 
 const reedMat = new THREE.MeshLambertMaterial({ color: "#2f8f4e" });
 for (const clump of [[-3.6, -0.8], [3.7, -0.45], [-4.1, 0.7]]) {
@@ -193,7 +204,7 @@ scene.add(fish);
 
 function swimFish(t) {
   const a = t * 0.4;
-  fish.position.set(Math.cos(a) * 2.6, 0.12, 8.8 + Math.sin(a * 1.3) * 1.5);
+  fish.position.set(Math.cos(a) * 1.45, 0.12, 7.15 + Math.sin(a * 1.3) * 0.55);
   fish.rotation.y = -a + Math.PI / 2;
   fishTail.rotation.y = Math.sin(t * 6) * 0.4;
 }
@@ -213,7 +224,7 @@ spot.position.set(0.06, 0.08, 0.08);
 stone.add(spot);
 scene.add(stone);
 
-const DOTS = 26;
+const DOTS = 12;
 const dots = [];
 const dotGeo = new THREE.SphereGeometry(0.07, 6, 5);
 for (let i = 0; i < DOTS; i += 1) {
@@ -226,6 +237,10 @@ for (let i = 0; i < DOTS; i += 1) {
   dots.push(dot);
 }
 
+function livePads() {
+  return pads.filter((pad) => !pad.reached);
+}
+
 function simulate(angle) {
   const pts = [];
   let px = CONFIG.start.x;
@@ -236,23 +251,29 @@ function simulate(angle) {
   let vy = CONFIG.lift;
   let skips = 0;
   let result = "fly";
+  let landed = null;
   const dt = 0.016;
-  const pad = CONFIG.pad;
-  for (let i = 0; i < 460; i += 1) {
+  const active = livePads();
+  const far = active.length ? Math.max(...active.map((pad) => pad.z)) + 1.6 : 6;
+  for (let i = 0; i < 520; i += 1) {
     pts.push({ x: px, y: py, z: pz, skip: skips });
     vy -= CONFIG.gravity * dt;
     px += vx * dt;
     pz += vz * dt;
     py += vy * dt;
-    const dx = px - pad.x;
-    const dz = pz - pad.z;
-    if (dx * dx + dz * dz <= pad.radius * pad.radius && py < 1.15 && py > -0.4) {
-      result = "across";
-      pts.push({ x: pad.x, y: pad.y + 0.2, z: pad.z, skip: skips });
-      break;
+    for (const pad of active) {
+      const dx = px - pad.x;
+      const dz = pz - pad.z;
+      if (dx * dx + dz * dz <= pad.radius * pad.radius && py < 1.15 && py > -0.4) {
+        result = "across";
+        landed = pad;
+        pts.push({ x: pad.x, y: pad.y + 0.2, z: pad.z, skip: skips });
+        break;
+      }
     }
-    if (pz < pad.z - 0.5 && py <= CONFIG.waterY) {
-      if (vy < -CONFIG.sinkSpeed || skips >= CONFIG.maxSkips) {
+    if (result === "across") break;
+    if (py <= CONFIG.waterY) {
+      if (pz > far || vy < -CONFIG.sinkSpeed || skips >= CONFIG.maxSkips) {
         result = "sink";
         pts.push({ x: px, y: CONFIG.waterY - 0.35, z: pz, skip: skips });
         break;
@@ -263,23 +284,24 @@ function simulate(angle) {
       vz *= 0.98;
       skips += 1;
     }
-    if (py < -2 || pz > pad.z + 8 || Math.abs(px) > 18) {
+    if (py < -2 || Math.abs(px) > 16) {
       result = "sink";
       break;
     }
   }
   if (result === "fly") result = "sink";
-  return { pts, result, skips };
+  return { pts, result, skips, landed };
 }
 
 let mode = "ready";
 let angle = CONFIG.startAngle;
-let throws = 0;
+let met = 0;
 let flight = null;
 let flightAt = 0;
 let heardSkip = 0;
 let settle = 0;
 let landHold = 0;
+let landPad = null;
 let clock = 0;
 
 function homeStone() {
@@ -290,11 +312,15 @@ function homeStone() {
 function paintAim() {
   const show = !flight && landHold <= 0 && mode !== "end";
   const sim = simulate(angle);
-  const last = Math.max(0, sim.pts.length - 1);
+  const preview = [];
+  for (const pt of sim.pts) {
+    if (pt.z > CONFIG.aimReach) break;
+    preview.push(pt);
+  }
+  const last = Math.max(0, preview.length - 1);
   for (let i = 0; i < DOTS; i += 1) {
-    const index = last === 0 ? 0 : Math.round((i / (DOTS - 1)) * last);
-    const pt = sim.pts[index];
     const dot = dots[i];
+    const pt = preview.length ? preview[last === 0 ? 0 : Math.round((i / (DOTS - 1)) * last)] : null;
     dot.visible = show && !!pt;
     if (!pt) continue;
     dot.position.set(pt.x, Math.max(pt.y, 0.12), pt.z);
@@ -303,7 +329,8 @@ function paintAim() {
 }
 
 function paintScore() {
-  scoreEl.textContent = mode === "end" ? "Across" : (throws ? `Throws ${throws}` : "Ready");
+  if (mode === "ready") scoreEl.textContent = "Ready";
+  else scoreEl.textContent = `Pads ${met}/${pads.length}`;
 }
 
 function showCard(title, label) {
@@ -320,12 +347,17 @@ function hideCard() {
 function resetRound() {
   mode = "ready";
   angle = CONFIG.startAngle;
-  throws = 0;
+  met = 0;
   flight = null;
   flightAt = 0;
   settle = 0;
   landHold = 0;
+  landPad = null;
   pauseBtn.textContent = "Pause";
+  for (const pad of pads) {
+    pad.reached = false;
+    pad.marker.visible = false;
+  }
   homeStone();
   paintAim();
   paintScore();
@@ -336,6 +368,7 @@ function begin() {
   hideCard();
   mode = "play";
   paintAim();
+  paintScore();
 }
 
 function aim(dir) {
@@ -351,17 +384,19 @@ function doThrow() {
   flight = sim;
   flightAt = 0;
   heardSkip = 0;
-  throws += 1;
   playSound("throw");
   paintAim();
-  paintScore();
 }
 
-function finishAcross() {
+function finishAcross(pad) {
   flight = null;
-  landHold = 1.25;
-  stone.position.set(CONFIG.pad.x, CONFIG.pad.y + 0.22, CONFIG.pad.z);
+  landPad = pad;
+  pad.reached = true;
+  met += 1;
+  landHold = met >= pads.length ? 1.25 : 0.85;
+  stone.position.set(pad.x, pad.y + 0.22, pad.z);
   paintAim();
+  paintScore();
   playSound("across");
 }
 
@@ -408,21 +443,30 @@ window.addEventListener("keydown", (e) => {
 
 function step(dt) {
   clock += dt;
-  flower.rotation.y = clock * 0.4;
-  flower.position.y = CONFIG.pad.y + Math.sin(clock * 1.6) * 0.03;
+  for (const pad of pads) {
+    pad.flower.position.y = pad.y + Math.sin(clock * 1.6 + pad.x) * 0.03;
+  }
   swimFish(clock);
-  if (landHold > 0) {
+  if (landHold > 0 && landPad) {
     landHold -= dt;
+    const pad = landPad;
     stone.position.set(
-      CONFIG.pad.x,
-      CONFIG.pad.y + 0.22 + Math.sin((1.25 - Math.max(landHold, 0)) * 7) * 0.05,
-      CONFIG.pad.z,
+      pad.x,
+      pad.y + 0.22 + Math.sin((1.25 - Math.max(landHold, 0)) * 7) * 0.05,
+      pad.z,
     );
     if (landHold <= 0) {
-      mode = "end";
-      stone.position.set(CONFIG.pad.x, CONFIG.pad.y + 0.22, CONFIG.pad.z);
-      paintScore();
-      showCard(CONFIG.winTitle, "Again");
+      if (met >= pads.length) {
+        mode = "end";
+        stone.position.set(pad.x, pad.y + 0.22, pad.z);
+        paintScore();
+        showCard(CONFIG.winTitle, "Again");
+      } else {
+        pad.marker.visible = true;
+        landPad = null;
+        settle = 0.7;
+        paintAim();
+      }
     }
     return;
   }
@@ -447,7 +491,7 @@ function step(dt) {
       playSound("skip");
     }
     if (flightAt >= last) {
-      if (flight.result === "across") finishAcross();
+      if (flight.result === "across" && flight.landed) finishAcross(flight.landed);
       else sinkBack();
     }
     return;
@@ -484,7 +528,7 @@ function frame(now) {
   last = now;
   if (mode === "play") step(dt);
   else {
-    flower.rotation.y += dt * 0.4;
+    for (const pad of pads) pad.flower.rotation.y += dt * 0.4;
     swimFish(performance.now() / 1000);
   }
   renderer.render(scene, camera);
