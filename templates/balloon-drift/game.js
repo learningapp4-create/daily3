@@ -192,8 +192,7 @@ function hideCard() {
   card.hidden = true;
 }
 
-function resetRound() {
-  mode = "ready";
+function resetPlay() {
   height = CONFIG.startHeight;
   target = CONFIG.startHeight;
   along = 0;
@@ -208,6 +207,11 @@ function resetRound() {
   paintGardens();
   paintScore();
   placeCamera();
+}
+
+function resetRound() {
+  mode = "ready";
+  resetPlay();
   showCard(CONFIG.readyTitle, "Go");
 }
 
@@ -260,8 +264,8 @@ lowerBtn.addEventListener("click", () => changeHeight(-1));
 pauseBtn.addEventListener("click", togglePause);
 resetBtn.addEventListener("click", resetRound);
 cardGo.addEventListener("click", () => {
-  if (mode === "end") resetRound();
-  else begin();
+  if (mode === "end") resetPlay();
+  begin();
 });
 
 window.addEventListener("keydown", (e) => {
@@ -289,7 +293,7 @@ function step(dt) {
       continue;
     }
     const dz = along - garden.z;
-    if (Math.abs(height - garden.y) <= CONFIG.band && dz > -0.15 && dz < 0.85) {
+    if (Math.abs(height - garden.y) <= CONFIG.band && dz > -0.35 && dz < CONFIG.reach) {
       garden.got = true;
       met += 1;
       playSound("bloom");

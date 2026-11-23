@@ -9,6 +9,7 @@ Edit `config.js`.
 - `drift` — how fast the balloon moves forward
 - `heightStep`, `minHeight`, `maxHeight`, `startHeight` — the height choice
 - `band` — how close the balloon must be to a garden's height
+- `reach` — how far past a garden the balloon can still meet it
 - `gardens` — `z` is along the drift, `y` is the height, `color` and `bright` are the shelf
 - `colors` — sky, ground, balloon, basket, clouds
 - `sounds` — files for a height change, a garden, and the meeting. `soundVolume` turns them down

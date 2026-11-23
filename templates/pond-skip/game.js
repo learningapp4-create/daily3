@@ -332,8 +332,8 @@ function togglePause() {
   }
 }
 
-leftBtn.addEventListener("click", () => aim(-1));
-rightBtn.addEventListener("click", () => aim(1));
+leftBtn.addEventListener("click", () => aim(1));
+rightBtn.addEventListener("click", () => aim(-1));
 throwBtn.addEventListener("click", doThrow);
 pauseBtn.addEventListener("click", togglePause);
 resetBtn.addEventListener("click", resetRound);
@@ -350,8 +350,8 @@ window.addEventListener("keydown", (e) => {
   }
   if (mode !== "play") return;
   if (e.repeat && (e.code === "Space" || e.code === "Enter")) return;
-  if (e.code === "ArrowLeft") aim(-1);
-  if (e.code === "ArrowRight") aim(1);
+  if (e.code === "ArrowLeft") aim(1);
+  if (e.code === "ArrowRight") aim(-1);
   if (e.code === "Space" || e.code === "Enter") doThrow();
 });
 
