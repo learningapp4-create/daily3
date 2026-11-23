@@ -421,7 +421,7 @@ function undoTurn() {
 }
 
 function beginWalk() {
-  if (mode === "end" || walk) return;
+  if (mode === "end" || walk || !card.hidden) return;
   if (!flower) {
     showCard("Check config.js", "One stone needs the letter F.", "Ready");
     return;

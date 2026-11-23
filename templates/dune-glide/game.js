@@ -16,6 +16,7 @@ const rightBtn = document.querySelector("#right");
 const backBtn = document.querySelector("#back");
 const stopBtn = document.querySelector("#stop");
 const soundBtn = document.querySelector("#sound");
+const footer = document.querySelector("footer");
 
 titleEl.textContent = CONFIG.title;
 goalEl.textContent = CONFIG.goalText || "";
@@ -326,7 +327,8 @@ function update(dt) {
   }
 
   const need = CONFIG.goalShells ?? shells.length;
-  const inCamp = z >= CONFIG.camp.z && Math.abs(x - CONFIG.camp.x) <= CONFIG.camp.halfWidth;
+  const inLane = Math.abs(x - CONFIG.camp.x) <= CONFIG.camp.halfWidth;
+  const inCamp = z >= CONFIG.camp.z && inLane;
   if (shellsGot >= need && goalEl.textContent === "Shells left") goalEl.textContent = CONFIG.goalText || "";
   if (inCamp && shellsGot >= need && along >= 0 && retreatTo == null) {
     const yWin = groundY(x, z);
@@ -337,7 +339,9 @@ function update(dt) {
     finish("win");
     return;
   }
-  if (retreatTo == null && rolling && !backHeld && inCamp && shellsGot < need && along >= 0) {
+  // Turn back before the pole when shells are still out, so the ball does not sit against it.
+  const beforePole = z >= CONFIG.camp.z - 1.4 && inLane;
+  if (retreatTo == null && rolling && !backHeld && shellsGot < need && along >= 0 && beforePole) {
     retreatTo = Math.max(CONFIG.startZ, z - (CONFIG.retreat ?? 8));
     along = -(CONFIG.back ?? 1.7);
     campNoted = true;
@@ -409,6 +413,43 @@ function frameCamera(dt, snap) {
     const bob = Math.sin(performance.now() * 0.004 + shell.z) * 0.08;
     shell.mesh.position.y = shell.baseY + bob;
   }
+  const limit = footer.getBoundingClientRect().top - 12;
+  let lookY = y + cam.lookUp - 0.45;
+  for (let n = 0; n < 5; n += 1) {
+    camera.lookAt(x * 0.15, lookY, z + cam.lookAhead);
+    camera.updateMatrixWorld();
+    const low = lowestShellScreenY();
+    if (low < 0 || low <= limit) break;
+    const h = renderer.domElement.clientHeight || 1;
+    lookY -= ((low - limit) / h) * 3;
+  }
+}
+
+const shellBox = new THREE.Box3();
+const shellPoint = new THREE.Vector3();
+
+function lowestShellScreenY() {
+  const h = renderer.domElement.clientHeight;
+  let lowest = -1;
+  for (const shell of shells) {
+    if (shell.got || !shell.mesh.visible) continue;
+    if (shell.z < camera.position.z + 0.3) continue;
+    shellBox.setFromObject(shell.mesh);
+    const xs = [shellBox.min.x, shellBox.max.x];
+    const ys = [shellBox.min.y, shellBox.max.y];
+    const zs = [shellBox.min.z, shellBox.max.z];
+    for (const sx of xs) {
+      for (const sy of ys) {
+        for (const sz of zs) {
+          shellPoint.set(sx, sy, sz).project(camera);
+          if (shellPoint.z < -1 || shellPoint.z > 1) continue;
+          const py = (1 - shellPoint.y) * 0.5 * h;
+          if (py > lowest) lowest = py;
+        }
+      }
+    }
+  }
+  return lowest;
 }
 
 function frame(now) {
