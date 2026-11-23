@@ -339,10 +339,13 @@ function update(dt) {
     finish("win");
     return;
   }
-  // Turn back before the pole when shells are still out, so the ball does not sit against it.
+  // Turn back before the pole when shells are still out, far enough to reach the one that was missed.
   const beforePole = z >= CONFIG.camp.z - 1.4 && inLane;
   if (retreatTo == null && rolling && !backHeld && shellsGot < need && along >= 0 && beforePole) {
-    retreatTo = Math.max(CONFIG.startZ, z - (CONFIG.retreat ?? 8));
+    const missed = shells.filter((shell) => !shell.got).sort((a, b) => a.z - b.z)[0];
+    retreatTo = missed
+      ? Math.max(CONFIG.startZ, missed.z - CONFIG.shellRadius)
+      : Math.max(CONFIG.startZ, z - (CONFIG.retreat ?? 8));
     along = -(CONFIG.back ?? 1.7);
     campNoted = true;
     playSound("miss");
@@ -386,17 +389,20 @@ function update(dt) {
       playSound("miss");
     }
   }
+  if (shellsGot >= need && retreatTo != null) retreatTo = null;
 
 }
 
 function frameCamera(dt, snap) {
   const y = ball.position.y;
   const cam = CONFIG.camera;
-  const camZ = Math.max(0.35, z - cam.back);
+  const facingBack = retreatTo != null || along < -0.2;
+  const camZ = facingBack ? z + cam.back : Math.max(0.35, z - cam.back);
+  const lookZ = facingBack ? z - cam.lookAhead : z + cam.lookAhead;
   const desired = new THREE.Vector3(x * 0.4, y + cam.up, camZ);
   if (snap) camera.position.copy(desired);
   else camera.position.lerp(desired, 1 - Math.exp(-4 * dt));
-  camera.lookAt(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
+  camera.lookAt(x * 0.15, y + cam.lookUp - 0.45, lookZ);
   camera.updateMatrixWorld();
   for (const shell of shells) {
     if (shell.got) {
@@ -416,7 +422,7 @@ function frameCamera(dt, snap) {
   const limit = footer.getBoundingClientRect().top - 12;
   let lookY = y + cam.lookUp - 0.45;
   for (let n = 0; n < 5; n += 1) {
-    camera.lookAt(x * 0.15, lookY, z + cam.lookAhead);
+    camera.lookAt(x * 0.15, lookY, lookZ);
     camera.updateMatrixWorld();
     const low = lowestShellScreenY();
     if (low < 0 || low <= limit) break;
@@ -433,7 +439,10 @@ function lowestShellScreenY() {
   let lowest = -1;
   for (const shell of shells) {
     if (shell.got || !shell.mesh.visible) continue;
-    if (shell.z < camera.position.z + 0.3) continue;
+    const inFront = camera.position.z > z
+      ? shell.z < camera.position.z - 0.3
+      : shell.z > camera.position.z + 0.3;
+    if (!inFront) continue;
     shellBox.setFromObject(shell.mesh);
     const xs = [shellBox.min.x, shellBox.max.x];
     const ys = [shellBox.min.y, shellBox.max.y];
