@@ -403,55 +403,41 @@ function frameCamera(dt, snap) {
   const y = ball.position.y;
   const cam = CONFIG.camera;
   const focus = shells.filter((shell) => !shell.got || shell.hold).sort((a, b) => a.z - b.z)[0];
-  const nearCollect = retreatTo != null && focus && Math.abs(z - focus.z) < 5.5;
-  const wantBack = (retreatTo != null || along < -0.2) && !nearCollect;
+  // Turn back to the flag before the ball reaches the shell, so the collect is the close view.
+  const meeting = retreatTo != null && focus && Math.abs(z - focus.z) < 7.2;
+  const wantBack = (retreatTo != null || along < -0.2) && !meeting;
   const targetFace = wantBack ? -1 : 1;
   if (snap) camFace = targetFace;
-  else camFace += (targetFace - camFace) * (1 - Math.exp(-3.2 * dt));
+  else camFace += (targetFace - camFace) * (1 - Math.exp(-2.2 * dt));
   if (Math.abs(camFace - targetFace) < 0.012) camFace = targetFace;
-  // Opening the turn, and taking the last shell, both used to slide the camera through the dune.
-  // Rise over the stretch from that shell to the flag so the ball, the shell, and the flag stay in view.
-  const opening = retreatTo != null && camFace > -0.9;
-  const returning = !!(focus && focus.hold);
-  const group = opening || nearCollect || returning;
+  // Stay at the chase distance and swing the look from the flag to the shell. A far overhead shot shrinks them to dots.
   const theta = ((1 - camFace) / 2) * Math.PI;
+  const turning = Math.abs(camFace) < 0.97;
+  let camZ = z - Math.cos(theta) * cam.back;
+  if (!turning && camFace > 0) camZ = Math.max(0.35, camZ);
+  if (focus) {
+    const gap = camZ - focus.z;
+    if (Math.abs(gap) < 3.3) camZ = focus.z + Math.sign(gap || -1) * 3.3;
+  }
+  const desired = new THREE.Vector3(x * 0.4, y + cam.up + Math.sin(theta) * 0.85, camZ);
   let lookX = x * 0.15;
   let lookY = y + cam.lookUp - 0.45;
-  let lookZ = z + Math.cos(theta) * cam.lookAhead;
-  let desired;
-  if (group && focus) {
-    const midZ = (focus.z + CONFIG.camp.z) * 0.5;
-    const span = Math.max(8, Math.abs(CONFIG.camp.z - focus.z));
-    const height = (span * 0.5) / Math.tan(THREE.MathUtils.degToRad(16));
-    desired = new THREE.Vector3(x * 0.1, y + height, midZ);
-    lookX = x * 0.1;
-    lookY = y + 0.35;
-    lookZ = midZ;
-  } else if (wantBack && focus) {
-    const chaseZ = z + cam.back;
-    const downhill = camera.position.z > z + cam.back * 0.7;
-    if (!downhill) {
-      desired = new THREE.Vector3(x * 0.1, y + cam.up + 7, chaseZ);
-      lookX = x * 0.1;
-      lookY = y + 0.3;
-      lookZ = (focus.z + z) * 0.5;
-    } else {
-      desired = new THREE.Vector3(x * 0.4, y + cam.up, chaseZ);
-      lookX = focus.x * 0.4 + x * 0.6;
-      lookY = y * 0.65 + (focus.baseY ?? y) * 0.35;
-      lookZ = focus.z * 0.58 + z * 0.42;
-    }
-  } else {
-    let camZ = z - Math.cos(theta) * cam.back;
-    if (camFace > 0.98) camZ = Math.max(0.35, camZ);
-    desired = new THREE.Vector3(x * 0.4, y + cam.up + Math.sin(theta) * 1.2, camZ);
-    if (focus && focus.hold) {
-      lookX = x * 0.15;
-      lookY = y + 0.2;
-      lookZ = z;
-    }
+  let lookZ = z + cam.lookAhead;
+  if (turning && focus) {
+    const face = (1 - camFace) / 2;
+    const aimZ = CONFIG.camp.z * (1 - face) + focus.z * face;
+    const aimX = CONFIG.camp.x * (1 - face) + focus.x * face;
+    const ahead = z + cam.lookAhead;
+    const toward = z + Math.max(-3.6, Math.min(cam.lookAhead, aimZ - z));
+    lookX = x * (1 - face * 0.4) + aimX * face * 0.4;
+    lookY = y + cam.lookUp - 0.45;
+    lookZ = ahead * (1 - face) + toward * face;
+  } else if (wantBack && focus && camFace < 0) {
+    lookX = focus.x * 0.4 + x * 0.6;
+    lookY = y * 0.7 + (focus.baseY ?? y) * 0.3;
+    lookZ = focus.z * 0.62 + z * 0.38;
   }
-  if (snap || group || wantBack || camFace > 0.85) camera.position.copy(desired);
+  if (snap || turning) camera.position.copy(desired);
   else camera.position.lerp(desired, 1 - Math.exp(-4 * dt));
   camera.lookAt(lookX, lookY, lookZ);
   camera.updateMatrixWorld();
@@ -477,13 +463,25 @@ function frameCamera(dt, snap) {
       shell.mesh.visible = false;
     }
   }
-  if (group || (!wantBack && Math.abs(camFace) <= 0.92)) return;
   const limit = footer.getBoundingClientRect().top - 12;
+  const holding = shells.some((shell) => shell.hold);
+  const lookFloor = lookY - (turning || holding ? 0.18 : 1.2);
+  if (turning || holding) {
+    const h = renderer.domElement.clientHeight || 1;
+    for (let n = 0; n < 2; n += 1) {
+      camera.lookAt(lookX, lookY, lookZ);
+      camera.updateMatrixWorld();
+      const by = ballScreenY(0);
+      if (by < 0 || by <= limit || lookY <= lookFloor) break;
+      lookY -= ((by - limit) / h) * 1.4;
+    }
+    return;
+  }
   for (let n = 0; n < 8; n += 1) {
     camera.lookAt(lookX, lookY, lookZ);
     camera.updateMatrixWorld();
     const low = Math.max(lowestShellScreenY(), ballScreenY());
-    if (low < 0 || low <= limit) break;
+    if (low < 0 || low <= limit || lookY <= lookFloor) break;
     const h = renderer.domElement.clientHeight || 1;
     lookY -= ((low - limit) / h) * 3;
   }
@@ -492,11 +490,11 @@ function frameCamera(dt, snap) {
 const shellBox = new THREE.Box3();
 const shellPoint = new THREE.Vector3();
 
-function ballScreenY() {
+function ballScreenY(pad = 42) {
   const h = renderer.domElement.clientHeight || 1;
   shellPoint.copy(ball.position).project(camera);
   if (shellPoint.z < -1 || shellPoint.z > 1) return -1;
-  return (1 - shellPoint.y) * 0.5 * h + 42;
+  return (1 - shellPoint.y) * 0.5 * h + pad;
 }
 
 function lowestShellScreenY() {
