@@ -402,17 +402,12 @@ function frameCamera(dt, snap) {
     shell.mesh.visible = true;
     shell.mesh.position.x = shell.x;
     shell.mesh.position.z = shell.z;
-    shell.mesh.scale.setScalar(1.15);
+    // The near slope hides the lower part of a shell. Grow those scallops up from the sand so the ridges clear it. Shells by the camp are already in view, and stay the same height so one does not cover the next.
+    const grown = shell.z < 12 ? 1.75 : shell.z < 19 ? 1.5 : 1.15;
+    shell.mesh.scale.set(1.15, grown, 1.15);
     shell.mesh.rotation.set(0, 0, 0);
-    shell._flat = Math.hypot(camera.position.x - shell.x, camera.position.z - shell.z);
     const bob = Math.sin(performance.now() * 0.004 + shell.z) * 0.08;
     shell.mesh.position.y = shell.baseY + bob;
-  }
-  // Grow the nearest shell up from the sand so its ridges stay visible. Lifting it would float it onto the shell behind.
-  const nearest = shells.filter((shell) => !shell.got).sort((a, b) => a._flat - b._flat)[0];
-  if (nearest && nearest.z < 21.5) {
-    const fade = Math.min(1, Math.max(0, (12.5 - nearest._flat) / 4));
-    nearest.mesh.scale.y = 1.15 * (1 + 0.5 * fade);
   }
 }
 
