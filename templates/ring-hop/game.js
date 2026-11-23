@@ -290,7 +290,7 @@ function popScore() {
 
 function updateButtons() {
   const lastRing = ringIndex >= rings().length - 1;
-  const aligned = mode === "play" && !hopping && earned && starIsClose();
+  const aligned = mode === "play" && !paused && !hopping && earned && starIsClose();
   catchBtn.classList.toggle("ready", aligned);
   outBtn.hidden = ringIndex === 0;
   const showMoon = mode === "play" && moonOpen();
@@ -520,7 +520,7 @@ function dressStars(dt) {
       markedGap = gap;
     }
   }
-  if (marked && mode === "play" && !hopping) {
+  if (marked && mode === "play" && !paused && !hopping) {
     marked.mesh.getWorldPosition(starPos);
     starMark.visible = true;
     starMark.position.set(starPos.x, 0.16, starPos.z);
@@ -593,6 +593,7 @@ function update(dt) {
     pulsePad(false);
     dressStars(dt);
     if (mode === "play") refreshAim();
+    updateButtons();
     return;
   }
   walk(dt);

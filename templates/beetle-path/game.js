@@ -613,6 +613,7 @@ pauseBtn.addEventListener("click", () => {
   if (mode !== "play") return;
   paused = !paused;
   pauseBtn.textContent = paused ? "Resume" : "Pause";
+  if (walk) scoreEl.textContent = paused ? "Paused" : "Walking";
 });
 resetBtn.addEventListener("click", resetRound);
 cardGo.addEventListener("click", () => {
