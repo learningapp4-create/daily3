@@ -184,6 +184,14 @@ for (let r = 0; r < height; r += 1) {
   }
 }
 
+const guideRing = new THREE.Mesh(
+  new THREE.TorusGeometry(0.55, 0.06, 8, 24),
+  new THREE.MeshLambertMaterial({ color: CONFIG.colors.flower }),
+);
+guideRing.rotation.x = Math.PI / 2;
+guideRing.visible = false;
+scene.add(guideRing);
+
 const beetle = new THREE.Group();
 const shellMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.beetle });
 const darkMat = new THREE.MeshLambertMaterial({ color: "#241810" });
@@ -264,6 +272,48 @@ resize();
 
 function tileAt(c, r) {
   return tiles.find((tile) => tile.c === c && tile.r === r);
+}
+
+function flowerSteps(c, r) {
+  return Math.abs(c - flower.c) + Math.abs(r - flower.r);
+}
+
+function guideStone() {
+  if (!flower) return null;
+  const seen = new Set();
+  let c = Math.max(0, Math.min(width - 1, CONFIG.start.c));
+  let r = Math.max(0, Math.min(height - 1, CONFIG.start.r));
+  for (let n = 0; n < width * height + 2; n += 1) {
+    if (c === flower.c && r === flower.r) return null;
+    const key = `${c},${r}`;
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const dir = DIRS[letters[r]?.[c]];
+    if (!dir) return { c, r };
+    const nc = c + dir.dc;
+    const nr = r + dir.dr;
+    if (nr < 0 || nc < 0 || nr >= height || nc >= width) return { c, r };
+    if (flowerSteps(nc, nr) > flowerSteps(c, r)) return { c, r };
+    if (seen.has(`${nc},${nr}`)) return { c, r };
+    c = nc;
+    r = nr;
+  }
+  return null;
+}
+
+function placeGuide(now) {
+  const show = card.hidden && mode !== "play" && mode !== "end";
+  const at = show ? guideStone() : null;
+  const tile = at ? tileAt(at.c, at.r) : null;
+  if (!tile || tile.flower) {
+    guideRing.visible = false;
+    return;
+  }
+  const pos = tileXZ(at.c, at.r);
+  const pulse = 1 + Math.sin(now * 0.006) * 0.08;
+  guideRing.visible = true;
+  guideRing.position.set(pos.x, tile.stone.position.y + 0.22, pos.z);
+  guideRing.scale.setScalar(pulse);
 }
 
 function paintCursor() {
@@ -551,6 +601,7 @@ function frame(now) {
     tile.marker.scale.setScalar(s);
   }
   if (flowerTile) flowerTile.marker.position.y = 0.18 + Math.sin(now * 0.003) * 0.05;
+  placeGuide(now);
   if (mode === "play") {
     stepWalk(dt);
     finishOffScreen();
