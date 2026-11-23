@@ -35,20 +35,38 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   clips.set(name, audio);
 }
 let soundOn = true;
+let soundUnlocked = false;
 function paintSound() {
   soundBtn.textContent = soundOn ? "Sound" : "Quiet";
   soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
 }
 paintSound();
+function unlockSound() {
+  if (soundUnlocked) return;
+  soundUnlocked = true;
+  for (const audio of clips.values()) {
+    audio.muted = true;
+    const pending = audio.play();
+    const release = () => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+    };
+    if (pending && pending.then) pending.then(release).catch(release);
+    else release();
+  }
+}
 function playSound(name) {
   if (!soundOn) return;
   const audio = clips.get(name);
   if (!audio) return;
+  audio.muted = false;
   audio.volume = CONFIG.soundVolume ?? 0.85;
-  const node = audio.cloneNode();
-  node.volume = audio.volume;
-  node.play().catch(() => {});
+  try { audio.currentTime = 0; } catch { /* replay from the start when the browser allows it */ }
+  audio.play().catch(() => {});
 }
+window.addEventListener("pointerdown", unlockSound, true);
+window.addEventListener("keydown", unlockSound, true);
 soundBtn.addEventListener("click", () => {
   soundOn = !soundOn;
   paintSound();

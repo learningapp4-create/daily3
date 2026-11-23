@@ -30,20 +30,38 @@ for (const [name, file] of Object.entries(CONFIG.sounds || {})) {
   clips.set(name, audio);
 }
 let soundOn = true;
+let soundUnlocked = false;
 function paintSound() {
   soundBtn.textContent = soundOn ? "Sound" : "Quiet";
   soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
 }
 paintSound();
+function unlockSound() {
+  if (soundUnlocked) return;
+  soundUnlocked = true;
+  for (const audio of clips.values()) {
+    audio.muted = true;
+    const pending = audio.play();
+    const release = () => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+    };
+    if (pending && pending.then) pending.then(release).catch(release);
+    else release();
+  }
+}
 function playSound(name) {
   if (!soundOn) return;
   const audio = clips.get(name);
   if (!audio) return;
+  audio.muted = false;
   audio.volume = CONFIG.soundVolume ?? 0.85;
-  const node = audio.cloneNode();
-  node.volume = audio.volume;
-  node.play().catch(() => {});
+  try { audio.currentTime = 0; } catch { /* replay from the start when the browser allows it */ }
+  audio.play().catch(() => {});
 }
+window.addEventListener("pointerdown", unlockSound, true);
+window.addEventListener("keydown", unlockSound, true);
 soundBtn.addEventListener("click", () => {
   soundOn = !soundOn;
   paintSound();
@@ -163,6 +181,7 @@ let mode = "loading";
 let paused = false;
 let snapCam = true;
 let handoff = -1;
+let easeChase = false;
 let x = 0;
 let z = CONFIG.startZ;
 let vx = 0;
@@ -260,6 +279,7 @@ function resetRound() {
   shade.position.set(x, (y ?? 1) + 0.03, z);
   snapCam = true;
   handoff = -1;
+  easeChase = false;
   mode = "ready";
   showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
 }
@@ -410,6 +430,7 @@ function frameCamera(dt, snap) {
   if (snap) handoff = -1;
   if (wantGroup) {
     handoff = 0;
+    easeChase = false;
     frameTogether();
   } else if (handoff >= 0 && handoff < 1) {
     handoff = Math.min(1, handoff + dt / 2.4);
@@ -471,47 +492,68 @@ function smoothStep(u) {
   return u * u * (3 - 2 * u);
 }
 
-function easeFromGroup(t, y, cam) {
-  // The wide valley view slides in along the center, then settles behind the ball.
-  // The camera tracks the ball, so the ball stays in the picture and the view does not swing around the flag.
-  const base = flag.position.y;
-  const u = Math.min(1, Math.max(0, t));
+function screenY(world) {
+  shellPoint.copy(world).project(camera);
+  if (shellPoint.z < -1 || shellPoint.z > 1) return null;
+  const h = renderer.domElement.clientHeight || 1;
+  return (1 - shellPoint.y) * 0.5 * h;
+}
+
+function slideIsSafe() {
+  camera.updateMatrixWorld();
+  const limit = footer.getBoundingClientRect().top - 36;
+  const ballY = screenY(ball.position);
+  if (ballY == null || ballY < 48 || ballY > limit) return false;
+  const polePoint = flag.position.clone();
+  polePoint.y += 0.34;
+  const poleY = screenY(polePoint);
+  if (poleY != null && poleY > limit) return false;
+  return true;
+}
+
+function showChase(y, cam) {
   const chaseZ = Math.max(0.35, z - cam.back);
-  const chasePos = new THREE.Vector3(x * 0.4, y + cam.up, chaseZ);
-  const chaseLook = new THREE.Vector3(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
+  const lookX = x * 0.15;
+  let lookY = y + cam.lookUp - 0.45;
+  const lookZ = z + cam.lookAhead;
+  camera.position.set(x * 0.4, y + cam.up, chaseZ);
+  const limit = footer.getBoundingClientRect().top - 12;
+  const lookFloor = lookY - 1.2;
+  const h = renderer.domElement.clientHeight || 1;
+  for (let n = 0; n < 8; n += 1) {
+    camera.lookAt(lookX, lookY, lookZ);
+    camera.updateMatrixWorld();
+    const low = ballScreenY();
+    if (low < 0 || low <= limit || lookY <= lookFloor) break;
+    lookY -= ((low - limit) / h) * 3;
+  }
+}
+
+function easeFromGroup(t, y, cam) {
+  // Stay on the valley picture while the pole is clear, then settle behind the ball.
+  // Any pose that drops the pole onto the buttons, or the ball into them, is skipped.
+  const u = Math.min(1, Math.max(0, t));
+  const base = flag.position.y;
   const valleyPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
   const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
-  const split = 0.72;
-  if (u <= split) {
-    const k = u / split;
-    const near = new THREE.Vector3(0.58, base + 6.45, 30.85);
-    const ahead = new THREE.Vector3(x * 0.08, y + 3.1, z + 6.4);
-    if (k < 0.46) {
-      camera.position.copy(valleyPos).lerp(near, smoothStep(k / 0.46));
-      camera.lookAt(groupLook);
-    } else {
-      const j = smoothStep((k - 0.46) / 0.54);
-      camera.position.copy(near).lerp(ahead, j);
-      camera.lookAt(groupLook.clone().lerp(trackedLook(y, -14), j));
-    }
+  if (easeChase || u >= 0.56) {
+    easeChase = true;
+    showChase(y, cam);
     return;
   }
-  const k = (u - split) / (1 - split);
-  const heldZ = z + 4.8;
-  const held = new THREE.Vector3(x * 0.08, y + cam.up, heldZ);
-  if (k < 0.42) {
-    const from = new THREE.Vector3(x * 0.08, y + 3.1, z + 6.4);
-    camera.position.copy(from).lerp(held, k / 0.42);
-    camera.lookAt(trackedLook(y, -14));
+  const k = u / 0.56;
+  if (k < 0.5) {
+    camera.position.copy(valleyPos);
+    camera.lookAt(groupLook);
     return;
   }
-  const j = (k - 0.42) / 0.58;
-  camera.position.copy(held).lerp(chasePos, j);
-  if (camera.position.z < z - 3.1) camera.lookAt(chaseLook);
-  else camera.lookAt(trackedLook(y, camera.position.z - z < 5.5 ? -18 : -14));
-  if (u > 0.97) {
-    camera.position.copy(chasePos);
-    camera.lookAt(chaseLook);
+  const j = smoothStep((k - 0.5) / 0.5);
+  const approach = new THREE.Vector3(x * 0.08, y + 3.5, z + 8.2);
+  camera.position.copy(valleyPos).lerp(approach, j);
+  camera.lookAt(trackedLook(y, -12));
+  if (!slideIsSafe()) {
+    easeChase = true;
+    showChase(y, cam);
   }
 }
 

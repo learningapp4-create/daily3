@@ -52,6 +52,7 @@
       padding: 16px;
     }
     .card[hidden] { display: none; }
+    body:has(#card:not([hidden])) footer { visibility: hidden; }
     .panel {
       background: #fffaf0;
       border-radius: 22px;
