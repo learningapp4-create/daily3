@@ -22,8 +22,9 @@ export const CONFIG = {
   bounce: 0.72,
   sinkSpeed: 3.8,
   maxSkips: 8,
-  // Aim dots stop here. They show the opening of the skip, not the landing.
-  aimReach: 4.2,
+  // Aim dots travel toward a pad, then stop this far outside the flower.
+  aimReach: 8.2,
+  aimMargin: 0.45,
 
   start: { x: 0, y: 0.45, z: 0.2 },
   waterY: 0.02,

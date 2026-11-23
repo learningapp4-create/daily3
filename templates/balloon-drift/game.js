@@ -101,6 +101,60 @@ for (const bush of [[-4.2, 1.5], [-3.6, 9.2], [-4.5, 22]]) {
   scene.add(clump);
 }
 
+const gapBushMat = new THREE.MeshLambertMaterial({ color: "#3e8c45" });
+function gapBush(x, z) {
+  const bush = new THREE.Mesh(new THREE.SphereGeometry(0.62, 8, 6), gapBushMat);
+  bush.scale.set(1.25, 0.7, 1.05);
+  bush.position.set(x, 0.38, z);
+  scene.add(bush);
+}
+const rockMat = new THREE.MeshLambertMaterial({ color: "#b7aa96" });
+function gapRock(x, z) {
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32, 0), rockMat);
+  rock.position.set(x, 0.18, z);
+  rock.rotation.y = x * 0.4;
+  scene.add(rock);
+}
+const birds = [];
+function gapBird(x, y, z) {
+  const bird = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 8, 6),
+    new THREE.MeshLambertMaterial({ color: "#f6f3ea" }),
+  );
+  body.scale.set(1.45, 0.7, 0.85);
+  const beak = new THREE.Mesh(
+    new THREE.ConeGeometry(0.05, 0.16, 4),
+    new THREE.MeshLambertMaterial({ color: "#e0a04a" }),
+  );
+  beak.rotation.z = -Math.PI / 2;
+  beak.position.x = 0.22;
+  const wing = new THREE.Mesh(
+    new THREE.ConeGeometry(0.11, 0.32, 4),
+    new THREE.MeshLambertMaterial({ color: "#d7d0c2" }),
+  );
+  wing.rotation.z = Math.PI / 2;
+  wing.position.set(0, 0.04, 0.14);
+  bird.add(body, beak, wing);
+  bird.position.set(x, y, z);
+  bird.userData.baseY = y;
+  scene.add(bird);
+  birds.push(bird);
+}
+gapBush(-3.6, 17.2);
+gapRock(-0.8, 18.4);
+gapBird(-2.0, 1.15, 16.4);
+gapBush(-3.4, 32.4);
+gapRock(-0.6, 33.6);
+gapBird(-1.8, 1.1, 31.6);
+
+function bobBirds() {
+  for (const bird of birds) {
+    bird.position.y = bird.userData.baseY + Math.sin(clock * 2.4 + bird.position.z) * 0.08;
+    bird.rotation.z = Math.sin(clock * 3.1 + bird.position.x) * 0.18;
+  }
+}
+
 const cloudMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.cloud });
 function makeCloud(x, y, z, scale) {
   const cloud = new THREE.Group();
@@ -310,6 +364,7 @@ function step(dt) {
   along += CONFIG.drift * dt;
   balloon.position.set(0, height + Math.sin(clock * 1.8) * 0.04, along);
   envelope.rotation.z = Math.sin(clock * 1.2) * 0.06;
+  bobBirds();
   paintGardens();
   for (const garden of gardens) {
     if (garden.got) {
@@ -355,6 +410,7 @@ function frame(now) {
   else {
     clock += dt;
     balloon.position.y = height + Math.sin(clock * 1.8) * 0.04;
+    bobBirds();
     for (const cloud of clouds) cloud.position.x += Math.sin(clock + cloud.position.z) * 0.0008;
     placeCamera();
   }

@@ -224,7 +224,7 @@ spot.position.set(0.06, 0.08, 0.08);
 stone.add(spot);
 scene.add(stone);
 
-const DOTS = 12;
+const DOTS = 16;
 const dots = [];
 const dotGeo = new THREE.SphereGeometry(0.07, 6, 5);
 for (let i = 0; i < DOTS; i += 1) {
@@ -313,8 +313,20 @@ function paintAim() {
   const show = !flight && landHold <= 0 && mode !== "end";
   const sim = simulate(angle);
   const preview = [];
+  const margin = CONFIG.aimMargin;
   for (const pt of sim.pts) {
     if (pt.z > CONFIG.aimReach) break;
+    let close = false;
+    for (const pad of pads) {
+      const dx = pt.x - pad.x;
+      const dz = pt.z - pad.z;
+      const keep = pad.radius + margin;
+      if (dx * dx + dz * dz <= keep * keep) {
+        close = true;
+        break;
+      }
+    }
+    if (close) break;
     preview.push(pt);
   }
   const last = Math.max(0, preview.length - 1);
