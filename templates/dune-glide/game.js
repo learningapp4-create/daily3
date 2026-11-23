@@ -412,7 +412,7 @@ function frameCamera(dt, snap) {
     handoff = 0;
     frameTogether();
   } else if (handoff >= 0 && handoff < 1) {
-    handoff = Math.min(1, handoff + dt / 1.05);
+    handoff = Math.min(1, handoff + dt / 2.15);
     easeFromGroup(handoff, y, cam);
     if (handoff >= 1) handoff = -1;
   } else {
@@ -471,26 +471,75 @@ function smoothStep(u) {
   return u * u * (3 - 2 * u);
 }
 
+const aimPoint = new THREE.Vector3();
+const aimLook = new THREE.Vector3();
+const aimRight = new THREE.Vector3();
+const aimUp = new THREE.Vector3();
+const aimProjected = new THREE.Vector3();
+
+function aimFlag(ndcY) {
+  aimPoint.set(flag.position.x + 0.22, flag.position.y + 1.15, flag.position.z);
+  aimLook.set(aimPoint.x, aimPoint.y + 0.4, aimPoint.z - 1.2);
+  const tanY = Math.tan((camera.fov * Math.PI) / 360);
+  const tanX = tanY * camera.aspect;
+  for (let n = 0; n < 8; n += 1) {
+    camera.lookAt(aimLook);
+    camera.updateMatrixWorld();
+    aimRight.setFromMatrixColumn(camera.matrixWorld, 0);
+    aimUp.setFromMatrixColumn(camera.matrixWorld, 1);
+    aimProjected.copy(aimPoint).project(camera);
+    const ex = 0 - aimProjected.x;
+    const ey = ndcY - aimProjected.y;
+    if (Math.abs(ex) < 0.015 && Math.abs(ey) < 0.015) break;
+    const dist = Math.max(0.8, camera.position.distanceTo(aimPoint));
+    aimLook.addScaledVector(aimRight, -ex * tanX * dist * 0.7);
+    aimLook.addScaledVector(aimUp, -ey * tanY * dist * 0.7);
+  }
+  camera.lookAt(aimLook);
+  return aimLook;
+}
+
 function easeFromGroup(t, y, cam) {
-  // Keep the camera on the valley floor, aimed so the flag stays whole and the sky
-  // stays open. The old dolly ran past the flag and tipped onto the sand.
+  // Slide from the valley picture to the view behind the ball. Drop toward the
+  // flag, arc around it at eye level so the sky stays open, then rise into the chase.
   const base = flag.position.y;
+  const u = smoothStep(Math.min(1, Math.max(0, t)));
   const groupPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
   const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
   const chasePos = new THREE.Vector3(x * 0.4, y + cam.up, Math.max(0.35, z - cam.back));
   const chaseLook = new THREE.Vector3(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
-  // Moving across the sand between these pictures pinches the sky and drops the flag.
-  // Hold the open valley view, then ease in from behind the ball where the flag stays ahead.
-  if (t < 0.34) {
-    camera.position.copy(groupPos);
-    camera.lookAt(groupLook);
+  const fx = flag.position.x;
+  const fz = flag.position.z;
+  const eyeY = base + 0.65;
+  const side = 2.15;
+  const reach = side + 0.45;
+  let pos;
+  let ndc;
+  if (u < 0.3) {
+    const k = smoothStep(u / 0.3);
+    pos = groupPos.clone().lerp(new THREE.Vector3(fx + 0.15, eyeY, fz + reach), k);
+    ndc = -0.42 + k * 0.6;
+  } else if (u < 0.72) {
+    const a = smoothStep((u - 0.3) / 0.42) * Math.PI;
+    pos = new THREE.Vector3(fx + Math.sin(a) * side, eyeY, fz + Math.cos(a) * reach);
+    ndc = 0.08;
+  } else {
+    const k = smoothStep((u - 0.72) / 0.28);
+    const front = new THREE.Vector3(fx + 0.1, eyeY, fz - reach);
+    pos = front.lerp(chasePos, k);
+    ndc = 0.12 + k * 0.28;
+  }
+  camera.position.copy(pos);
+  const aimed = aimFlag(ndc).clone();
+  if (u < 0.14) {
+    camera.lookAt(groupLook.clone().lerp(aimed, smoothStep(u / 0.14)));
     return;
   }
-  const u = smoothStep((t - 0.34) / 0.66);
-  const far = new THREE.Vector3(x * 0.3, y + cam.up + 0.45, Math.max(1.1, z - 7.5));
-  const flagAim = new THREE.Vector3(flag.position.x, base + 1.7, flag.position.z - 0.6);
-  camera.position.copy(far.lerp(chasePos, u));
-  camera.lookAt(flagAim.lerp(chaseLook, 0.55 + u * 0.45));
+  if (u > 0.84) {
+    camera.lookAt(aimed.lerp(chaseLook, smoothStep((u - 0.84) / 0.16)));
+    return;
+  }
+  camera.lookAt(aimed);
 }
 
 const shellBox = new THREE.Box3();
