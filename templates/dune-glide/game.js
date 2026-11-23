@@ -162,6 +162,7 @@ const keys = { left: false, right: false, back: false };
 let mode = "loading";
 let paused = false;
 let snapCam = true;
+let handoff = -1;
 let x = 0;
 let z = CONFIG.startZ;
 let vx = 0;
@@ -258,6 +259,7 @@ function resetRound() {
   ball.position.set(x, (y ?? 1) + CONFIG.ballRadius, z);
   shade.position.set(x, (y ?? 1) + 0.03, z);
   snapCam = true;
+  handoff = -1;
   mode = "ready";
   showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
 }
@@ -405,8 +407,14 @@ function frameCamera(dt, snap) {
   const liveHold = shells.some((shell) => shell.hold && now < shell.holdUntil);
   // Hold one view on the ball, the missed shell, and the flag. Swinging the chase camera drops two of them.
   const wantGroup = !!(focus && (retreatTo != null || liveHold));
+  if (snap) handoff = -1;
   if (wantGroup) {
+    handoff = 0;
     frameTogether();
+  } else if (handoff >= 0 && handoff < 1) {
+    handoff = Math.min(1, handoff + dt / 1.05);
+    easeFromGroup(handoff, y, cam);
+    if (handoff >= 1) handoff = -1;
   } else {
     const camZ = Math.max(0.35, z - cam.back);
     const desired = new THREE.Vector3(x * 0.4, y + cam.up, camZ);
@@ -457,6 +465,57 @@ function frameTogether() {
   const base = flag.position.y;
   camera.position.set(0.65, base + 6.5, 31.2);
   camera.lookAt(0.05, base - 2.15, 14.2);
+}
+
+function smoothStep(u) {
+  return u * u * (3 - 2 * u);
+}
+
+function quadPoint(p0, p1, p2, u) {
+  const a = p0.clone().lerp(p1, u);
+  const b = p1.clone().lerp(p2, u);
+  return a.lerp(b, u);
+}
+
+function easeFromGroup(t, y, cam) {
+  // Dolly in along the valley view so the ball grows where it already sits, then orbit
+  // behind it. Looking at the ball while the camera is still far turns it into a dot.
+  const base = flag.position.y;
+  const groupPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
+  const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
+  const chasePos = new THREE.Vector3(x * 0.4, y + cam.up, Math.max(0.35, z - cam.back));
+  const chaseLook = new THREE.Vector3(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
+  const ballPos = new THREE.Vector3(x, y + 0.12, z);
+  const toBall = ballPos.clone().sub(groupPos);
+  const dist = Math.max(0.001, toBall.length());
+  const dir = toBall.multiplyScalar(1 / dist);
+  const travel = Math.max(0, dist - 4.8);
+  const lookOffset = groupLook.clone().sub(groupPos);
+  if (t < 0.34) {
+    const u = 1 - (1 - t / 0.34) ** 2.4;
+    const pos = groupPos.clone().addScaledVector(dir, travel * u);
+    camera.position.copy(pos);
+    camera.lookAt(pos.clone().add(lookOffset));
+    return;
+  }
+  const u = smoothStep((t - 0.34) / 0.66);
+  const near = groupPos.clone().addScaledVector(dir, travel);
+  const side = x >= 0 ? 1 : -1;
+  const apex = new THREE.Vector3(x + side * 3.4, y + cam.up + 1.1, z + 0.6);
+  let pos = quadPoint(near, apex, chasePos, u);
+  const offset = pos.clone().sub(ballPos);
+  if (offset.length() < 4.4) {
+    offset.setLength(4.4);
+    pos = ballPos.clone().add(offset);
+  }
+  const valley = lookOffset.clone().normalize();
+  const atBall = ballPos.clone().sub(pos).normalize();
+  const ahead = chaseLook.clone().sub(pos).normalize();
+  const gaze = u < 0.42
+    ? valley.lerp(atBall, smoothStep(u / 0.42))
+    : atBall.lerp(ahead, smoothStep((u - 0.42) / 0.58));
+  camera.position.copy(pos);
+  camera.lookAt(pos.clone().add(gaze));
 }
 
 const shellBox = new THREE.Box3();
