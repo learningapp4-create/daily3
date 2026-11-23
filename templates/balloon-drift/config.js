@@ -10,20 +10,20 @@ export const CONFIG = {
     meet: "sfx/meet.webm",
   },
 
-  drift: 0.55,
+  drift: 0.85,
   heightStep: 0.4,
   minHeight: 0.8,
   maxHeight: 5.2,
   startHeight: 2.2,
   band: 0.5,
-  reach: 1.6,
-  endZ: 26,
+  reach: 1.35,
+  endZ: 19.4,
 
-  // None of these heights is the start height. Each one asks for Higher or Lower.
+  // None of these heights is the start height. The gaps are short enough to see the next garden.
   gardens: [
-    { z: 6.4, y: 3.4, color: "#f0c24b", bright: "#ffe9a8" },
-    { z: 15.2, y: 1.4, color: "#e56b8a", bright: "#ffd0dc" },
-    { z: 24, y: 3.6, color: "#7dce6a", bright: "#d8f5c4" },
+    { z: 5.6, y: 3.4, color: "#f0c24b", bright: "#ffe9a8" },
+    { z: 11.2, y: 1.4, color: "#e56b8a", bright: "#ffd0dc" },
+    { z: 16.8, y: 3.6, color: "#7dce6a", bright: "#d8f5c4" },
   ],
 
   colors: {

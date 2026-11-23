@@ -42,14 +42,15 @@
     }
     button:focus-visible { outline: 3px solid #2f6f4e; outline-offset: 2px; }
     #throw, .panel button { background: #3f8f4a; color: #f4fff4; min-width: 8.5rem; }
-    #throw.ready { background: #ffd45a; color: #1d2a18; }
     #sound { min-width: 5.6rem; color: #1d2a18; background: #fffaf0; }
     #sound[aria-pressed="false"] { background: #d9d3c7; }
     .card {
       position: fixed; inset: 0;
-      display: grid; place-items: center;
-      background: rgba(16, 48, 72, 0.28);
-      padding: 16px;
+      display: grid;
+      align-items: end;
+      justify-items: center;
+      background: rgba(16, 48, 72, 0.12);
+      padding: 16px 16px 28px;
     }
     .card[hidden] { display: none; }
     body:has(#card:not([hidden])) footer { visibility: hidden; }

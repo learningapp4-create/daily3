@@ -129,7 +129,11 @@ for (const x of postXs) {
 const planks = CONFIG.planks.map((spec, index) => {
   const mat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.plank });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(spec.length, 0.16, 0.48), mat);
-  const home = { x: midX + (index - 1) * 3.35, y: 0.2, z: 1.85 };
+  const home = {
+    x: midX + (index - (CONFIG.planks.length - 1) / 2) * 2.9,
+    y: 0.2,
+    z: 1.7,
+  };
   mesh.position.set(home.x, home.y, home.z);
   mesh.userData.kind = "plank";
   mesh.userData.index = index;
@@ -178,6 +182,32 @@ scene.add(ring);
 
 camera.position.set(midX, 14, 7.2);
 camera.lookAt(midX, 0, 0.15);
+
+const bushMat = new THREE.MeshLambertMaterial({ color: "#3e8a48" });
+function bush(x, z, scale) {
+  const clump = new THREE.Group();
+  const a = new THREE.Mesh(new THREE.SphereGeometry(0.36, 8, 6), bushMat);
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.24, 7, 5), bushMat);
+  b.position.set(0.26, 0.04, 0.08);
+  clump.add(a, b);
+  clump.position.set(x, 0.26, z);
+  clump.scale.setScalar(scale);
+  scene.add(clump);
+}
+bush(midX - 3.6, -1.65, 1);
+bush(midX + 3.8, -1.8, 0.8);
+const bankRock = new THREE.Mesh(
+  new THREE.DodecahedronGeometry(0.34, 0),
+  new THREE.MeshLambertMaterial({ color: "#b7b1a4" }),
+);
+bankRock.position.set(midX + 2.4, 0.18, 2.7);
+scene.add(bankRock);
+const bankFlower = new THREE.Mesh(
+  new THREE.ConeGeometry(0.16, 0.28, 6),
+  new THREE.MeshLambertMaterial({ color: "#e56b8a" }),
+);
+bankFlower.position.set(midX - 2.5, 0.18, 2.7);
+scene.add(bankFlower);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -344,7 +374,6 @@ window.addEventListener("keydown", (e) => {
 
 function layout(dt) {
   clock += dt;
-  const item = focusOrder[focusAt];
   for (const plank of planks) {
     if (plank.hop > 0) plank.hop = Math.max(0, plank.hop - dt);
     const hop = plank.hop > 0 ? Math.sin((1 - plank.hop / 0.4) * Math.PI) * 0.45 : 0;
@@ -356,19 +385,11 @@ function layout(dt) {
     const bob = Math.sin(clock * 2.2 + plank.index) * 0.03;
     plank.mesh.position.set(plank.home.x, plank.home.y + lift + bob + hop, plank.home.z);
   }
-  if (item && mode !== "end") {
-    ring.visible = !walking;
-    if (item.kind === "plank") {
-      const plank = planks[item.index];
-      ring.position.set(plank.mesh.position.x, 0.08, plank.mesh.position.z);
-      ring.scale.setScalar(Math.max(1, plank.length * 0.7));
-    } else {
-      const gap = gaps[item.index];
-      ring.position.set(gap.x, 0.08, 0);
-      ring.scale.setScalar(Math.max(1, gap.need * 0.55));
-    }
-  } else {
-    ring.visible = false;
+  const held = planks.find((plank) => plank.selected);
+  ring.visible = Boolean(held) && !walking && mode === "play";
+  if (held) {
+    ring.position.set(held.mesh.position.x, 0.06, held.mesh.position.z);
+    ring.scale.setScalar(Math.max(1.15, held.length * 0.48));
   }
   if (walking) {
     walkT += dt / CONFIG.walkSeconds;
@@ -389,7 +410,7 @@ function resize() {
   const h = canvas.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false);
   const aspect = w / Math.max(1, h);
-  const viewH = 6.5;
+  const viewH = 7.4;
   camera.left = -(viewH * aspect) / 2;
   camera.right = (viewH * aspect) / 2;
   camera.top = viewH * 0.4;

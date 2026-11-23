@@ -127,6 +127,7 @@ const gardens = CONFIG.gardens.map((spec) => {
   group.add(shelf);
   const flowerMat = new THREE.MeshLambertMaterial({ color: spec.color });
   const blooms = [];
+  const stems = [];
   for (let i = 0; i < 3; i += 1) {
     const stem = new THREE.Mesh(
       new THREE.CylinderGeometry(0.03, 0.04, 0.32, 5),
@@ -138,10 +139,11 @@ const gardens = CONFIG.gardens.map((spec) => {
     stem.add(head);
     group.add(stem);
     blooms.push(head);
+    stems.push(stem);
   }
   group.position.set(-2.35, spec.y, spec.z);
   scene.add(group);
-  return { ...spec, group, shelfMat, blooms, got: false };
+  return { ...spec, group, shelfMat, blooms, stems, got: false, missed: false };
 });
 
 const balloon = new THREE.Group();
@@ -201,7 +203,13 @@ function resetPlay() {
   pauseBtn.textContent = "Pause";
   for (const garden of gardens) {
     garden.got = false;
-    for (const bloom of garden.blooms) bloom.scale.setScalar(1);
+    garden.missed = false;
+    garden.shelfMat.color.set(garden.color);
+    for (const stem of garden.stems) stem.rotation.x = 0;
+    for (const bloom of garden.blooms) {
+      bloom.material.color.set(garden.color);
+      bloom.scale.setScalar(1);
+    }
   }
   balloon.position.set(0, height, along);
   paintGardens();
@@ -222,14 +230,27 @@ function begin() {
 
 function paintGardens() {
   for (const garden of gardens) {
+    if (garden.missed) {
+      garden.shelfMat.color.set("#9a928c");
+      continue;
+    }
     const near = Math.abs(height - garden.y) <= CONFIG.band;
     garden.shelfMat.color.set(garden.got || near ? garden.bright : garden.color);
   }
 }
 
+function markMissed(garden) {
+  garden.missed = true;
+  for (const stem of garden.stems) stem.rotation.x = 1.2;
+  for (const bloom of garden.blooms) {
+    bloom.material.color.set("#c4beb4");
+    bloom.scale.setScalar(0.6);
+  }
+}
+
 function placeCamera() {
-  camera.position.set(11.2, 3.15, along - 1.1);
-  camera.lookAt(-1.3, 2.2, along + 2.4);
+  camera.position.set(11.2, 3.15, along - 2.2);
+  camera.lookAt(-1.3, 2.2, along + 1.1);
 }
 
 function changeHeight(dir) {
@@ -293,6 +314,8 @@ function step(dt) {
       continue;
     }
     const dz = along - garden.z;
+    if (!garden.missed && dz > CONFIG.reach) markMissed(garden);
+    if (garden.missed) continue;
     if (Math.abs(height - garden.y) <= CONFIG.band && dz > -0.35 && dz < CONFIG.reach) {
       garden.got = true;
       met += 1;

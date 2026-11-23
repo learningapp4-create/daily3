@@ -14,17 +14,18 @@ export const CONFIG = {
     cross: "sfx/cross.webm",
   },
 
-  fitSlack: 0.2,
+  fitSlack: 0.1,
   walkSeconds: 2.4,
   gaps: [
-    { need: 1.15 },
-    { need: 2.7 },
-    { need: 1.9 },
+    { need: 1.72 },
+    { need: 2.36 },
+    { need: 2.04 },
   ],
   planks: [
-    { length: 1.9 },
-    { length: 1.15 },
-    { length: 2.7 },
+    { length: 2.04 },
+    { length: 2.56 },
+    { length: 1.72 },
+    { length: 2.36 },
   ],
 
   colors: {

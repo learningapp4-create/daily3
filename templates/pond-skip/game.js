@@ -139,11 +139,57 @@ flower.add(heart);
 flower.position.set(CONFIG.pad.x, CONFIG.pad.y, CONFIG.pad.z);
 scene.add(flower);
 
+function plainPad(x, z, radius) {
+  const leaf = new THREE.Mesh(
+    new THREE.CircleGeometry(radius, 10),
+    new THREE.MeshLambertMaterial({ color: "#5ea864" }),
+  );
+  leaf.rotation.x = -Math.PI / 2;
+  leaf.position.set(x, 0.045, z);
+  scene.add(leaf);
+}
+plainPad(-3.2, 7.4, 0.72);
+plainPad(3.4, 12.2, 0.9);
+plainPad(-2.6, 13.4, 0.48);
+
 const reedMat = new THREE.MeshLambertMaterial({ color: "#2f8f4e" });
-for (const at of [[-1.7, 0.35], [1.75, 0.2]]) {
-  const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.9, 5), reedMat);
-  reed.position.set(at[0], 0.4, at[1]);
-  scene.add(reed);
+for (const clump of [[-3.6, -0.8], [3.7, -0.45], [-4.1, 0.7]]) {
+  for (let i = 0; i < 3; i += 1) {
+    const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.85, 5), reedMat);
+    reed.position.set(clump[0] + (i - 1) * 0.16, 0.4, clump[1] + i * 0.07);
+    reed.scale.y = 0.75 + i * 0.28;
+    scene.add(reed);
+  }
+}
+
+const rock = new THREE.Mesh(
+  new THREE.DodecahedronGeometry(0.26, 0),
+  new THREE.MeshLambertMaterial({ color: "#c4b49a" }),
+);
+rock.position.set(2.7, 0.16, 0.15);
+rock.rotation.y = 0.6;
+scene.add(rock);
+
+const fish = new THREE.Group();
+const fishBody = new THREE.Mesh(
+  new THREE.SphereGeometry(0.2, 8, 6),
+  new THREE.MeshLambertMaterial({ color: "#e07a3d" }),
+);
+fishBody.scale.set(1.7, 0.5, 0.7);
+const fishTail = new THREE.Mesh(
+  new THREE.ConeGeometry(0.1, 0.2, 4),
+  new THREE.MeshLambertMaterial({ color: "#c45e28" }),
+);
+fishTail.rotation.z = Math.PI / 2;
+fishTail.position.x = -0.3;
+fish.add(fishBody, fishTail);
+scene.add(fish);
+
+function swimFish(t) {
+  const a = t * 0.4;
+  fish.position.set(Math.cos(a) * 2.6, 0.12, 8.8 + Math.sin(a * 1.3) * 1.5);
+  fish.rotation.y = -a + Math.PI / 2;
+  fishTail.rotation.y = Math.sin(t * 6) * 0.4;
 }
 
 const stone = new THREE.Group();
@@ -227,6 +273,7 @@ let flight = null;
 let flightAt = 0;
 let heardSkip = 0;
 let settle = 0;
+let landHold = 0;
 let clock = 0;
 
 function homeStone() {
@@ -235,19 +282,18 @@ function homeStone() {
 }
 
 function paintAim() {
-  const show = !flight && mode !== "end";
+  const show = !flight && landHold <= 0 && mode !== "end";
   const sim = simulate(angle);
-  const step = Math.max(1, Math.floor(sim.pts.length / DOTS));
-  const onPad = sim.result === "across";
+  const last = Math.max(0, sim.pts.length - 1);
   for (let i = 0; i < DOTS; i += 1) {
-    const pt = sim.pts[Math.min(sim.pts.length - 1, i * step)];
+    const index = last === 0 ? 0 : Math.round((i / (DOTS - 1)) * last);
+    const pt = sim.pts[index];
     const dot = dots[i];
     dot.visible = show && !!pt;
     if (!pt) continue;
     dot.position.set(pt.x, Math.max(pt.y, 0.12), pt.z);
-    dot.material.color.set(onPad ? CONFIG.colors.aimOn : CONFIG.colors.aim);
+    dot.material.color.set(CONFIG.colors.aim);
   }
-  throwBtn.classList.toggle("ready", show && onPad && mode === "play");
 }
 
 function paintScore() {
@@ -272,6 +318,7 @@ function resetRound() {
   flight = null;
   flightAt = 0;
   settle = 0;
+  landHold = 0;
   pauseBtn.textContent = "Pause";
   homeStone();
   paintAim();
@@ -286,14 +333,14 @@ function begin() {
 }
 
 function aim(dir) {
-  if (mode !== "play" || flight) return;
+  if (mode !== "play" || flight || landHold > 0) return;
   angle = Math.min(CONFIG.angleMax, Math.max(CONFIG.angleMin, angle + dir * CONFIG.angleStep));
   homeStone();
   paintAim();
 }
 
 function doThrow() {
-  if (mode !== "play" || flight || settle > 0) return;
+  if (mode !== "play" || flight || settle > 0 || landHold > 0) return;
   const sim = simulate(angle);
   flight = sim;
   flightAt = 0;
@@ -305,13 +352,11 @@ function doThrow() {
 }
 
 function finishAcross() {
-  mode = "end";
   flight = null;
-  stone.position.set(CONFIG.pad.x, CONFIG.pad.y + 0.2, CONFIG.pad.z);
+  landHold = 1.25;
+  stone.position.set(CONFIG.pad.x, CONFIG.pad.y + 0.22, CONFIG.pad.z);
   paintAim();
-  paintScore();
   playSound("across");
-  showCard(CONFIG.winTitle, "Again");
 }
 
 function sinkBack() {
@@ -359,6 +404,22 @@ function step(dt) {
   clock += dt;
   flower.rotation.y = clock * 0.4;
   flower.position.y = CONFIG.pad.y + Math.sin(clock * 1.6) * 0.03;
+  swimFish(clock);
+  if (landHold > 0) {
+    landHold -= dt;
+    stone.position.set(
+      CONFIG.pad.x,
+      CONFIG.pad.y + 0.22 + Math.sin((1.25 - Math.max(landHold, 0)) * 7) * 0.05,
+      CONFIG.pad.z,
+    );
+    if (landHold <= 0) {
+      mode = "end";
+      stone.position.set(CONFIG.pad.x, CONFIG.pad.y + 0.22, CONFIG.pad.z);
+      paintScore();
+      showCard(CONFIG.winTitle, "Again");
+    }
+    return;
+  }
   if (flight) {
     flightAt += dt / 0.016;
     const last = flight.pts.length - 1;
@@ -416,7 +477,10 @@ function frame(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   if (mode === "play") step(dt);
-  else flower.rotation.y += dt * 0.4;
+  else {
+    flower.rotation.y += dt * 0.4;
+    swimFish(performance.now() / 1000);
+  }
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
