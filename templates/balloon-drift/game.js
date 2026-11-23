@@ -204,6 +204,8 @@ function resetPlay() {
   for (const garden of gardens) {
     garden.got = false;
     garden.missed = false;
+    garden.group.rotation.x = 0;
+    garden.group.position.y = garden.y;
     garden.shelfMat.color.set(garden.color);
     for (const stem of garden.stems) stem.rotation.x = 0;
     for (const bloom of garden.blooms) {
@@ -231,7 +233,7 @@ function begin() {
 function paintGardens() {
   for (const garden of gardens) {
     if (garden.missed) {
-      garden.shelfMat.color.set("#9a928c");
+      garden.shelfMat.color.set("#6e4b34");
       continue;
     }
     const near = Math.abs(height - garden.y) <= CONFIG.band;
@@ -241,10 +243,12 @@ function paintGardens() {
 
 function markMissed(garden) {
   garden.missed = true;
-  for (const stem of garden.stems) stem.rotation.x = 1.2;
+  garden.group.rotation.x = 1.25;
+  garden.group.position.y = garden.y - 0.7;
+  for (const stem of garden.stems) stem.rotation.x = 1.5;
   for (const bloom of garden.blooms) {
-    bloom.material.color.set("#c4beb4");
-    bloom.scale.setScalar(0.6);
+    bloom.material.color.set("#7a4328");
+    bloom.scale.setScalar(2.6);
   }
 }
 

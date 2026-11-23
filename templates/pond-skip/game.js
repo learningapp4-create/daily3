@@ -139,18 +139,24 @@ flower.add(heart);
 flower.position.set(CONFIG.pad.x, CONFIG.pad.y, CONFIG.pad.z);
 scene.add(flower);
 
-function plainPad(x, z, radius) {
-  const leaf = new THREE.Mesh(
-    new THREE.CircleGeometry(radius, 10),
-    new THREE.MeshLambertMaterial({ color: "#5ea864" }),
-  );
-  leaf.rotation.x = -Math.PI / 2;
-  leaf.position.set(x, 0.045, z);
-  scene.add(leaf);
+const leafMat = new THREE.MeshLambertMaterial({ color: "#9aaa52" });
+function floatingLeaves(x, z, turn) {
+  const clump = new THREE.Group();
+  for (let i = 0; i < 3; i += 1) {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.05, 4), leafMat);
+    leaf.rotation.z = Math.PI / 2;
+    leaf.rotation.y = i * 0.55;
+    leaf.scale.set(0.22, 1, 0.1);
+    leaf.position.set((i - 1) * 0.12, 0.03, i * 0.05);
+    clump.add(leaf);
+  }
+  clump.position.set(x, 0.05, z);
+  clump.rotation.y = turn;
+  scene.add(clump);
 }
-plainPad(-3.2, 7.4, 0.72);
-plainPad(3.4, 12.2, 0.9);
-plainPad(-2.6, 13.4, 0.48);
+floatingLeaves(-4.4, 6.4, 0.5);
+floatingLeaves(4.5, 8.8, -0.7);
+floatingLeaves(4.1, 12.6, 0.3);
 
 const reedMat = new THREE.MeshLambertMaterial({ color: "#2f8f4e" });
 for (const clump of [[-3.6, -0.8], [3.7, -0.45], [-4.1, 0.7]]) {
