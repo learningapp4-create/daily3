@@ -412,7 +412,7 @@ function frameCamera(dt, snap) {
     handoff = 0;
     frameTogether();
   } else if (handoff >= 0 && handoff < 1) {
-    handoff = Math.min(1, handoff + dt / 2.15);
+    handoff = Math.min(1, handoff + dt / 2.4);
     easeFromGroup(handoff, y, cam);
     if (handoff >= 1) handoff = -1;
   } else {
@@ -471,75 +471,62 @@ function smoothStep(u) {
   return u * u * (3 - 2 * u);
 }
 
-const aimPoint = new THREE.Vector3();
-const aimLook = new THREE.Vector3();
-const aimRight = new THREE.Vector3();
-const aimUp = new THREE.Vector3();
-const aimProjected = new THREE.Vector3();
-
-function aimFlag(ndcY) {
-  aimPoint.set(flag.position.x + 0.22, flag.position.y + 1.15, flag.position.z);
-  aimLook.set(aimPoint.x, aimPoint.y + 0.4, aimPoint.z - 1.2);
-  const tanY = Math.tan((camera.fov * Math.PI) / 360);
-  const tanX = tanY * camera.aspect;
-  for (let n = 0; n < 8; n += 1) {
-    camera.lookAt(aimLook);
-    camera.updateMatrixWorld();
-    aimRight.setFromMatrixColumn(camera.matrixWorld, 0);
-    aimUp.setFromMatrixColumn(camera.matrixWorld, 1);
-    aimProjected.copy(aimPoint).project(camera);
-    const ex = 0 - aimProjected.x;
-    const ey = ndcY - aimProjected.y;
-    if (Math.abs(ex) < 0.015 && Math.abs(ey) < 0.015) break;
-    const dist = Math.max(0.8, camera.position.distanceTo(aimPoint));
-    aimLook.addScaledVector(aimRight, -ex * tanX * dist * 0.7);
-    aimLook.addScaledVector(aimUp, -ey * tanY * dist * 0.7);
+function easeFromGroup(t, y, cam) {
+  // The wide valley view slides in along the center, then settles behind the ball.
+  // The camera tracks the ball, so the ball stays in the picture and the view does not swing around the flag.
+  const base = flag.position.y;
+  const u = Math.min(1, Math.max(0, t));
+  const chaseZ = Math.max(0.35, z - cam.back);
+  const chasePos = new THREE.Vector3(x * 0.4, y + cam.up, chaseZ);
+  const chaseLook = new THREE.Vector3(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
+  const valleyPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
+  const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
+  const split = 0.72;
+  if (u <= split) {
+    const k = u / split;
+    const near = new THREE.Vector3(0.58, base + 6.45, 30.85);
+    const ahead = new THREE.Vector3(x * 0.08, y + 3.1, z + 6.4);
+    if (k < 0.46) {
+      camera.position.copy(valleyPos).lerp(near, smoothStep(k / 0.46));
+      camera.lookAt(groupLook);
+    } else {
+      const j = smoothStep((k - 0.46) / 0.54);
+      camera.position.copy(near).lerp(ahead, j);
+      camera.lookAt(groupLook.clone().lerp(trackedLook(y, -14), j));
+    }
+    return;
   }
-  camera.lookAt(aimLook);
-  return aimLook;
+  const k = (u - split) / (1 - split);
+  const heldZ = z + 4.8;
+  const held = new THREE.Vector3(x * 0.08, y + cam.up, heldZ);
+  if (k < 0.42) {
+    const from = new THREE.Vector3(x * 0.08, y + 3.1, z + 6.4);
+    camera.position.copy(from).lerp(held, k / 0.42);
+    camera.lookAt(trackedLook(y, -14));
+    return;
+  }
+  const j = (k - 0.42) / 0.58;
+  camera.position.copy(held).lerp(chasePos, j);
+  if (camera.position.z < z - 3.1) camera.lookAt(chaseLook);
+  else camera.lookAt(trackedLook(y, camera.position.z - z < 5.5 ? -18 : -14));
+  if (u > 0.97) {
+    camera.position.copy(chasePos);
+    camera.lookAt(chaseLook);
+  }
 }
 
-function easeFromGroup(t, y, cam) {
-  // Slide from the valley picture to the view behind the ball. Drop toward the
-  // flag, arc around it at eye level so the sky stays open, then rise into the chase.
-  const base = flag.position.y;
-  const u = smoothStep(Math.min(1, Math.max(0, t)));
-  const groupPos = new THREE.Vector3(0.65, base + 6.5, 31.2);
-  const groupLook = new THREE.Vector3(0.05, base - 2.15, 14.2);
-  const chasePos = new THREE.Vector3(x * 0.4, y + cam.up, Math.max(0.35, z - cam.back));
-  const chaseLook = new THREE.Vector3(x * 0.15, y + cam.lookUp - 0.45, z + cam.lookAhead);
-  const fx = flag.position.x;
-  const fz = flag.position.z;
-  const eyeY = base + 0.65;
-  const side = 2.15;
-  const reach = side + 0.45;
-  let pos;
-  let ndc;
-  if (u < 0.3) {
-    const k = smoothStep(u / 0.3);
-    pos = groupPos.clone().lerp(new THREE.Vector3(fx + 0.15, eyeY, fz + reach), k);
-    ndc = -0.42 + k * 0.6;
-  } else if (u < 0.72) {
-    const a = smoothStep((u - 0.3) / 0.42) * Math.PI;
-    pos = new THREE.Vector3(fx + Math.sin(a) * side, eyeY, fz + Math.cos(a) * reach);
-    ndc = 0.08;
-  } else {
-    const k = smoothStep((u - 0.72) / 0.28);
-    const front = new THREE.Vector3(fx + 0.1, eyeY, fz - reach);
-    pos = front.lerp(chasePos, k);
-    ndc = 0.12 + k * 0.28;
-  }
-  camera.position.copy(pos);
-  const aimed = aimFlag(ndc).clone();
-  if (u < 0.14) {
-    camera.lookAt(groupLook.clone().lerp(aimed, smoothStep(u / 0.14)));
-    return;
-  }
-  if (u > 0.84) {
-    camera.lookAt(aimed.lerp(chaseLook, smoothStep((u - 0.84) / 0.16)));
-    return;
-  }
-  camera.lookAt(aimed);
+function trackedLook(y, deg) {
+  const dx = x - camera.position.x;
+  const dz = z - camera.position.z;
+  const horiz = Math.hypot(dx, dz) || 0.001;
+  const pitch = Math.atan2(y + 0.06 - camera.position.y, horiz);
+  const clamped = Math.max(deg * Math.PI / 180, Math.min(6 * Math.PI / 180, pitch));
+  const dist = Math.max(6, horiz);
+  return new THREE.Vector3(
+    camera.position.x + (dx / horiz) * dist,
+    camera.position.y + Math.tan(clamped) * dist,
+    camera.position.z + (dz / horiz) * dist
+  );
 }
 
 const shellBox = new THREE.Box3();
