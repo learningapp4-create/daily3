@@ -28,7 +28,7 @@ export const CONFIG = {
   // A line that will sink stops here, in open water, short of the flowers.
   aimReach: 4.4,
   // A line that will land stops this close to the pad, still off the flower.
-  aimMargin: 0.08,
+  aimMargin: 0.22,
   // Flowers slide this far past the dots, leaving open water. A throw
   // lands only while the flower is this close to the end of the line.
   // It sits there, then comes back this soon after it leaves.

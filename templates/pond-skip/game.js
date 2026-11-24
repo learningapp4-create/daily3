@@ -432,6 +432,8 @@ function inPond(x, z, radius) {
 }
 
 let lastAims = "";
+let leanMin = CONFIG.angleMin;
+let leanMax = CONFIG.angleMax;
 
 function placeFlowers() {
   const step = CONFIG.angleStep;
@@ -441,34 +443,59 @@ function placeFlowers() {
   for (let n = nMin; n <= nMax; n += 1) {
     aims.push({ n, pts: stonePath(n * step) });
   }
+  const lineEnd = (pts, slot, meeting) => {
+    const keep = (slot.r + CONFIG.aimMargin) ** 2;
+    let last = null;
+    for (const pt of pts) {
+      const dx = pt.x - slot.x;
+      const dz = pt.z - slot.z;
+      if (dx * dx + dz * dz <= keep) break;
+      if (!meeting && pt.z > CONFIG.aimReach) break;
+      last = pt;
+    }
+    return last;
+  };
   const slots = [];
   for (const lane of aims) {
     if (Math.abs(lane.n) < 3) continue;
-    for (const zWant of [9.1, 10.2, 11.3, 12.3]) {
-      let best = null;
-      for (const pt of lane.pts) {
-        if (pt.y < 0 || pt.y > 1.05) continue;
-        if (Math.abs(pt.z - zWant) > 0.4) continue;
-        if (!best || Math.abs(pt.z - zWant) < Math.abs(best.z - zWant)) best = pt;
-      }
-      if (!best) continue;
+    for (const pt of lane.pts) {
+      if (pt.y < 0 || pt.y > 1.05) continue;
+      if (pt.z < CONFIG.aimReach + 2.8 || pt.z > 13.2) continue;
       const radius = 1.55;
-      if (!inPond(best.x, best.z, radius) || !inPond(best.x, best.z + CONFIG.drift, radius)) continue;
+      if (!inPond(pt.x, pt.z, radius) || !inPond(pt.x, pt.z + CONFIG.drift, radius)) continue;
+      const x = Math.round(pt.x * 100) / 100;
+      const z = Math.round(pt.z * 100) / 100;
+      if (slots.some((slot) => Math.hypot(slot.x - x, slot.z - z) < 0.35)) continue;
       const hits = [];
       for (const other of aims) {
-        const near = other.pts.some((pt) => (
-          pt.y > -0.4 && pt.y < 1.15
-          && (pt.x - best.x) ** 2 + (pt.z - best.z) ** 2 <= CONFIG.hit * CONFIG.hit
+        const near = other.pts.some((sample) => (
+          sample.y > -0.4 && sample.y < 1.15
+          && (sample.x - x) ** 2 + (sample.z - z) ** 2 <= CONFIG.hit * CONFIG.hit
         ));
         if (near) hits.push(other.n);
       }
-      if (hits.length !== 1 || Math.abs(hits[0]) < 3) continue;
-      const x = Math.round(best.x * 100) / 100;
-      const z = Math.round(best.z * 100) / 100;
-      if (slots.some((slot) => Math.hypot(slot.x - x, slot.z - z) < 0.35)) continue;
-      slots.push({ n: hits[0], x, z, r: radius });
+      if (hits.length !== 1 || hits[0] !== lane.n) continue;
+      const slot = { n: lane.n, x, z, r: radius };
+      const aimed = lineEnd(lane.pts, slot, true);
+      if (!aimed) continue;
+      const shy = Math.hypot(aimed.x - x, aimed.z - z) - radius;
+      if (shy < 0 || shy > 0.45) continue;
+      const straight = lineEnd(aims.find((aim) => aim.n === 0).pts, slot, false);
+      if (!straight) continue;
+      const gap = Math.hypot(straight.x - x, straight.z - z) - radius;
+      if (gap < 1.3) continue;
+      slots.push(slot);
     }
   }
+  const widest = (sign) => {
+    for (let n = sign > 0 ? nMax : nMin; sign > 0 ? n >= 3 : n <= -3; n -= sign) {
+      if (slots.some((slot) => slot.n === n)) return n;
+    }
+    return null;
+  };
+  const leftN = widest(1);
+  const rightN = widest(-1);
+  if (leftN === null || rightN === null) return;
   const crowded = (a, b) => {
     const need = a.r + b.r + 0.3;
     for (const za of [a.z, a.z + CONFIG.drift]) {
@@ -495,11 +522,15 @@ function placeFlowers() {
         const trio = [slots[i], slots[j], slots[k]];
         if (new Set(trio.map((slot) => slot.n)).size < 3) continue;
         if (crowded(slots[i], slots[k]) || crowded(slots[j], slots[k])) continue;
+        const left = trio.reduce((a, b) => (a.x > b.x ? a : b));
+        const right = trio.reduce((a, b) => (a.x < b.x ? a : b));
+        if (left.n !== leftN || right.n !== rightN) continue;
         if (trio.some((slot) => blocked(slot, trio.filter((other) => other !== slot)))) continue;
         const key = trio.map((slot) => slot.n).sort((a, b) => a - b).join(",");
         if (!byKey.has(key)) byKey.set(key, []);
         const list = byKey.get(key);
-        if (list.length < 4) list.push(trio);
+        list.push(trio);
+        if (list.length > 8) list.splice(Math.floor(Math.random() * list.length), 1);
       }
     }
   }
@@ -509,6 +540,8 @@ function placeFlowers() {
   if (!choices || !choices.length) return;
   const trio = choices[Math.floor(Math.random() * choices.length)];
   lastAims = key;
+  leanMax = Math.min(CONFIG.angleMax, leftN * step);
+  leanMin = Math.max(CONFIG.angleMin, rightN * step);
   pads.forEach((pad, index) => {
     const spot = trio[index];
     pad.homeX = spot.x;
@@ -549,7 +582,7 @@ function begin() {
 
 function aim(dir) {
   if (mode !== "play" || flight || landHold > 0) return;
-  angle = Math.min(CONFIG.angleMax, Math.max(CONFIG.angleMin, angle + dir * CONFIG.angleStep));
+  angle = Math.min(leanMax, Math.max(leanMin, angle + dir * CONFIG.angleStep));
   homeStone();
   paintAim();
 }
