@@ -17,12 +17,11 @@ export const CONFIG = {
   startZ: 0,
   barnZ: 22,
 
-  // turns is how far the bar starts from across the path. 0 is fully across.
-  // One turn of turnStep swings the bar. Two turns from 0 leaves the path open.
+  // z is where the gate stands. Each round starts the bars at new angles.
   gates: [
-    { z: 6.5, turns: 0 },
-    { z: 12.5, turns: 1 },
-    { z: 18.2, turns: 0 },
+    { z: 6.5 },
+    { z: 12.5 },
+    { z: 18.2 },
   ],
 
   colors: {

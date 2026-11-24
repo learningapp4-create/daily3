@@ -40,9 +40,10 @@ function unlockSound() {
     audio.muted = true;
     const pending = audio.play();
     const release = () => {
+      audio.muted = false;
+      if (heard) return;
       audio.pause();
       audio.currentTime = 0;
-      audio.muted = false;
     };
     if (pending && pending.then) pending.then(release).catch(release);
     else release();
@@ -118,8 +119,16 @@ const gates = CONFIG.gates.map((spec) => {
   bar.position.y = 0.72;
   group.add(bar);
   scene.add(group);
-  return { ...spec, group, bar, angle: 0, passed: false, waiting: false };
+  return { ...spec, group, bar, angle: 0, dir: 1, passed: false, waiting: false };
 });
+
+const barStarts = [
+  { angle: 0, dir: 1, need: 2 },
+  { angle: 0, dir: -1, need: 2 },
+  { angle: Math.PI / 4, dir: 1, need: 1 },
+  { angle: -Math.PI / 4, dir: -1, need: 1 },
+];
+let lastGatePlan = "";
 
 const wagon = new THREE.Group();
 const bed = new THREE.Mesh(
@@ -192,18 +201,39 @@ function placeCamera() {
   camera.lookAt(0, 1.15, wagonZ + 5);
 }
 
+function layGates() {
+  const plans = [];
+  for (const first of barStarts) {
+    for (const second of barStarts) {
+      for (const third of barStarts) {
+        const starts = [first, second, third];
+        const key = starts.map((start) => `${start.need}${start.dir > 0 ? "R" : "L"}`).join(",");
+        if (starts[0].need === 2 && starts[1].need === 1 && starts[2].need === 2) continue;
+        plans.push({ key, starts });
+      }
+    }
+  }
+  const choices = plans.filter((plan) => plan.key !== lastGatePlan);
+  const plan = choices[Math.floor(Math.random() * choices.length)] || plans[0];
+  lastGatePlan = plan.key;
+  gates.forEach((gate, index) => {
+    const start = plan.starts[index];
+    gate.angle = start.angle;
+    gate.dir = start.dir;
+    gate.need = start.need;
+    gate.bar.rotation.y = gate.angle;
+    gate.passed = false;
+    gate.waiting = false;
+  });
+}
+
 function resetPlay() {
   heard = false;
   wagonZ = CONFIG.startZ;
   met = 0;
   clock = 0;
   pauseBtn.textContent = "Pause";
-  for (const gate of gates) {
-    gate.angle = gate.turns * CONFIG.turnStep;
-    gate.bar.rotation.y = gate.angle;
-    gate.passed = false;
-    gate.waiting = false;
-  }
+  layGates();
   wagon.position.set(0, 0, wagonZ);
   paintScore();
   placeCamera();
@@ -231,7 +261,7 @@ function pressTurn() {
   const gate = gates.find((item) => !item.passed);
   if (!gate) return;
   heard = true;
-  gate.angle += CONFIG.turnStep;
+  gate.angle += gate.dir * CONFIG.turnStep;
   gate.bar.rotation.y = gate.angle;
   playSound("turn");
 }

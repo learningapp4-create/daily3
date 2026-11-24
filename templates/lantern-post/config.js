@@ -19,8 +19,15 @@ export const CONFIG = {
   capY: 1.05,
   tail: 3.2,
 
-  // x is where the post stands. The raft starts at 0.
-  posts: [4.2, 8.8, 13.4],
+  // The raft starts at 0. firstPost is the first post. Each round uses a new pair of gaps.
+  firstPost: 4.2,
+  rhythms: [
+    [3.6, 6.6],
+    [6.4, 3.6],
+    [4.6, 5.6],
+    [7.2, 4.2],
+    [5.2, 4.0],
+  ],
 
   colors: {
     sky: "#6ea0d4",

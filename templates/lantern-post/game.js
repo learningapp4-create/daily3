@@ -102,11 +102,32 @@ moon.position.set(4.5, 3.3, -3);
 scene.add(moon);
 
 const reedMat = new THREE.MeshLambertMaterial({ color: "#2f6a45" });
-for (const x of [-3.2, 7.4, 18.5]) {
-  const reed = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 5), reedMat);
-  reed.position.set(x, 0.45, -0.8);
+const reeds = [];
+for (let i = 0; i < 3; i += 1) {
+  const reed = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.05, 5), reedMat);
   scene.add(reed);
+  reeds.push(reed);
 }
+const fishMat = new THREE.MeshLambertMaterial({ color: "#f08a3c" });
+const fish = [0, 1].map((index) => {
+  const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.55, 5), fishMat);
+  mesh.rotation.z = -Math.PI / 2;
+  scene.add(mesh);
+  return { mesh, baseX: 0, index };
+});
+const bird = new THREE.Group();
+const birdBody = new THREE.Mesh(
+  new THREE.ConeGeometry(0.12, 0.46, 4),
+  new THREE.MeshLambertMaterial({ color: "#f4f7fb" }),
+);
+birdBody.rotation.z = -Math.PI / 2;
+bird.add(birdBody);
+const wing = new THREE.Mesh(
+  new THREE.BoxGeometry(0.5, 0.06, 0.22),
+  new THREE.MeshLambertMaterial({ color: "#d5deea" }),
+);
+bird.add(wing);
+scene.add(bird);
 
 const raft = new THREE.Group();
 const hull = new THREE.Mesh(
@@ -130,7 +151,7 @@ raft.add(lantern);
 scene.add(raft);
 
 const capGeo = new THREE.CylinderGeometry(0.62, 0.66, 0.22, 10);
-const posts = CONFIG.posts.map((x) => {
+const posts = [0, 1, 2].map(() => {
   const group = new THREE.Group();
   const poleMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.14, 0.16, 1.15, 6),
@@ -142,9 +163,9 @@ const posts = CONFIG.posts.map((x) => {
   const cap = new THREE.Mesh(capGeo, capMat);
   cap.position.y = CONFIG.capY;
   group.add(cap);
-  group.position.set(x, 0, 0);
+  group.position.set(0, 0, 0);
   scene.add(group);
-  return { x, group, cap, capMat, lit: false, missed: false, glow: null };
+  return { x: 0, group, cap, capMat, lit: false, missed: false, glow: null };
 });
 
 let raftX = 0;
@@ -152,7 +173,8 @@ let met = 0;
 let mode = "ready";
 let clock = 0;
 let drop = null;
-const endX = CONFIG.posts[CONFIG.posts.length - 1] + CONFIG.tail;
+let endX = 0;
+let lastRhythm = "";
 
 function paintScore() {
   scoreEl.textContent = `Posts ${met}/${posts.length}`;
@@ -191,6 +213,39 @@ function clearGlows() {
   }
 }
 
+function layPosts() {
+  const choices = CONFIG.rhythms.filter((rhythm) => rhythm.join(",") !== lastRhythm);
+  const rhythm = choices[Math.floor(Math.random() * choices.length)] || CONFIG.rhythms[0];
+  lastRhythm = rhythm.join(",");
+  let x = CONFIG.firstPost;
+  posts.forEach((post, index) => {
+    post.x = x;
+    post.group.position.x = x;
+    if (index < rhythm.length) x += rhythm[index];
+  });
+  endX = posts[posts.length - 1].x + CONFIG.tail;
+  reeds[0].position.set(CONFIG.firstPost * 0.4, 0.5, -0.85);
+  reeds[1].position.set(posts[0].x + (posts[1].x - posts[0].x) * 0.38, 0.5, -0.85);
+  reeds[2].position.set(posts[1].x + (posts[2].x - posts[1].x) * 0.38, 0.5, -0.85);
+  fish.forEach((item, index) => {
+    item.baseX = posts[index].x + (posts[index + 1].x - posts[index].x) * 0.62;
+  });
+}
+
+function driftLife() {
+  fish.forEach((item) => {
+    const leap = Math.max(0, Math.sin(clock * 2.1 + item.index * 1.7));
+    item.mesh.position.set(
+      item.baseX + Math.sin(clock * 0.7 + item.index) * 0.3,
+      0.12 + leap * 0.85,
+      0.55,
+    );
+    item.mesh.rotation.z = -Math.PI / 2 + leap * 0.8;
+  });
+  bird.position.set(raftX + Math.sin(clock * 0.85) * 3.1, 2.85 + Math.sin(clock * 2.6) * 0.12, -0.5);
+  wing.rotation.z = Math.sin(clock * 7) * 0.5;
+}
+
 function resetPlay() {
   heard = false;
   raftX = 0;
@@ -200,6 +255,7 @@ function resetPlay() {
   pauseBtn.textContent = "Pause";
   clearGlows();
   lantern.position.y = CONFIG.lanternHigh;
+  layPosts();
   for (const post of posts) {
     post.lit = false;
     post.missed = false;
@@ -278,6 +334,7 @@ function step(dt) {
     if (!post.lit && !post.missed && raftX > post.x + CONFIG.band) post.missed = true;
   }
   paintPosts();
+  driftLife();
   placeCamera();
   if (raftX > endX) finish(posts.every((post) => post.lit));
 }
@@ -336,6 +393,7 @@ function frame(now) {
     clock += dt;
     if (!drop) lantern.position.y = CONFIG.lanternHigh + Math.sin(clock * 2.2) * 0.04;
     raft.position.x = raftX;
+    driftLife();
     placeCamera();
     renderer.render(scene, camera);
     return;

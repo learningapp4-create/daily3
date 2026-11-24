@@ -9,7 +9,7 @@ Edit `config.js`.
 - `speed` — how fast the wagon rolls
 - `stopGap` — how far in front of a closed bar the wagon waits
 - `turnStep` — how far one press swings the bar, in radians
-- `gates` — each `z` is where the gate stands. `turns` is how many swings it starts from fully across the path. `0` is across the path
+- `gates` — each `z` is where the gate stands. Each round starts that bar at a new angle
 - `startZ` — where the wagon begins
 - `barnZ` — where the round ends
 - `colors` — sky, grass, path, bar, posts, wagon, wood, barn, roof
