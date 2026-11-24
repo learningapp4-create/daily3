@@ -25,9 +25,10 @@ export const CONFIG = {
   // The stone lands only this close to a flower's middle. A line that
   // merely points that way, or passes beside the pad, sinks.
   hit: 0.55,
-  // Aim dots travel toward a pad, then stop this far outside the flower.
-  aimReach: 8.2,
-  aimMargin: 0.45,
+  // A line that will sink stops here, in open water, short of the flowers.
+  aimReach: 4.4,
+  // A line that will land stops this close to the pad, still off the flower.
+  aimMargin: 0.08,
 
   start: { x: 0, y: 0.45, z: 0.2 },
   waterY: 0.02,

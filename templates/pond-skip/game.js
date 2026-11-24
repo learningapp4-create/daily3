@@ -316,47 +316,18 @@ function outsidePad(pt, pad, margin) {
   return dx * dx + dz * dz > keep * keep;
 }
 
-function nearestPad(pts, choices) {
-  let aimed = null;
-  for (const pad of choices) {
-    let best = null;
-    for (const pt of pts) {
-      const d = Math.hypot(pt.x - pad.x, pt.z - pad.z);
-      if (!best || d < best.d) best = { d, pt };
-    }
-    if (!aimed || best.d < aimed.d) aimed = { pad, ...best };
-  }
-  return aimed;
-}
-
 function paintAim() {
   const show = !flight && landHold <= 0 && mode !== "end";
   const sim = simulate(angle);
-  const margin = CONFIG.aimMargin;
-  const aimed = nearestPad(sim.pts, livePads());
-  const toward = aimed && !sim.landed && aimed.d <= aimed.pad.radius + 0.45;
-  const through = toward && aimed.d <= aimed.pad.radius;
   const preview = [];
   for (const pt of sim.pts) {
     if (sim.landed) {
-      if (!outsidePad(pt, sim.landed, 0.18)) break;
-      if (pads.some((pad) => pad !== sim.landed && !outsidePad(pt, pad, 0.05))) continue;
-      preview.push(pt);
-      continue;
-    }
-    if (through) {
-      if (pads.some((pad) => !outsidePad(pt, pad, 0.08))) continue;
-      preview.push(pt);
-      if (pt.z > aimed.pt.z + 0.7) break;
-      continue;
-    }
-    if (toward) {
-      if (!outsidePad(pt, aimed.pad, 0.9)) break;
+      if (!outsidePad(pt, sim.landed, CONFIG.aimMargin)) break;
+      if (pads.some((pad) => pad !== sim.landed && !outsidePad(pt, pad, 0.02))) continue;
       preview.push(pt);
       continue;
     }
     if (pt.z > CONFIG.aimReach) break;
-    if (livePads().some((pad) => !outsidePad(pt, pad, margin))) break;
     preview.push(pt);
   }
   const last = Math.max(0, preview.length - 1);
