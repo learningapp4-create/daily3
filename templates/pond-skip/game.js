@@ -264,7 +264,7 @@ function simulate(angle) {
     for (const pad of active) {
       const dx = px - pad.x;
       const dz = pz - pad.z;
-      if (dx * dx + dz * dz <= pad.radius * pad.radius && py < 1.15 && py > -0.4) {
+      if (dx * dx + dz * dz <= CONFIG.hit * CONFIG.hit && py < 1.15 && py > -0.4) {
         result = "across";
         landed = pad;
         pts.push({ x: pad.x, y: pad.y + 0.2, z: pad.z, skip: skips });
@@ -316,74 +316,53 @@ function outsidePad(pt, pad, margin) {
   return dx * dx + dz * dz > keep * keep;
 }
 
-function wrapAngle(delta) {
-  while (delta > Math.PI) delta -= Math.PI * 2;
-  while (delta < -Math.PI) delta += Math.PI * 2;
-  return delta;
-}
-
-// A reached flower sits on the way to a later one. Bend the dots around it
-// so they keep running toward the far flower and never sit on a lily.
-function aroundReached(raw, passed, target, margin) {
-  if (!passed.length) return raw;
-  const preview = [];
-  let index = 0;
-  while (index < raw.length) {
-    const pad = passed.find((item) => !outsidePad(raw[index], item, margin));
-    if (!pad) {
-      preview.push(raw[index]);
-      index += 1;
-      continue;
+function nearestPad(pts, choices) {
+  let aimed = null;
+  for (const pad of choices) {
+    let best = null;
+    for (const pt of pts) {
+      const d = Math.hypot(pt.x - pad.x, pt.z - pad.z);
+      if (!best || d < best.d) best = { d, pt };
     }
-    const before = raw[Math.max(0, index - 1)];
-    while (index < raw.length && !outsidePad(raw[index], pad, margin)) index += 1;
-    const after = raw[Math.min(raw.length - 1, index)];
-    const keep = pad.radius + margin;
-    const a0 = Math.atan2(before.x - pad.x, before.z - pad.z);
-    const a1 = Math.atan2(after.x - pad.x, after.z - pad.z);
-    const short = wrapAngle(a1 - a0);
-    const long = short > 0 ? short - Math.PI * 2 : short + Math.PI * 2;
-    const nearer = (sweep) => {
-      const mid = a0 + sweep / 2;
-      const x = pad.x + Math.sin(mid) * keep;
-      const z = pad.z + Math.cos(mid) * keep;
-      return Math.hypot(x - target.x, z - target.z);
-    };
-    const sweep = nearer(long) < nearer(short) ? long : short;
-    const steps = 7;
-    for (let step = 1; step <= steps; step += 1) {
-      const arc = a0 + (sweep * step) / (steps + 1);
-      preview.push({
-        x: pad.x + Math.sin(arc) * keep,
-        y: before.y,
-        z: pad.z + Math.cos(arc) * keep,
-      });
-    }
+    if (!aimed || best.d < aimed.d) aimed = { pad, ...best };
   }
-  return preview;
+  return aimed;
 }
 
 function paintAim() {
   const show = !flight && landHold <= 0 && mode !== "end";
   const sim = simulate(angle);
   const margin = CONFIG.aimMargin;
-  const target = sim.landed;
-  const farAim = !!target && pads.some((pad) => pad.reached && pad !== target && pad.z < target.z - 1);
+  const aimed = nearestPad(sim.pts, livePads());
+  const toward = aimed && !sim.landed && aimed.d <= aimed.pad.radius + 0.45;
+  const through = toward && aimed.d <= aimed.pad.radius;
   const preview = [];
-  const reach = farAim ? target.z : CONFIG.aimReach;
   for (const pt of sim.pts) {
-    if (pt.z > reach) break;
-    const blocks = farAim ? pads.filter((pad) => !pad.reached || pad === target) : pads;
-    if (blocks.some((pad) => !outsidePad(pt, pad, margin))) break;
+    if (sim.landed) {
+      if (!outsidePad(pt, sim.landed, 0.18)) break;
+      if (pads.some((pad) => pad !== sim.landed && !outsidePad(pt, pad, 0.05))) continue;
+      preview.push(pt);
+      continue;
+    }
+    if (through) {
+      if (pads.some((pad) => !outsidePad(pt, pad, 0.08))) continue;
+      preview.push(pt);
+      if (pt.z > aimed.pt.z + 0.7) break;
+      continue;
+    }
+    if (toward) {
+      if (!outsidePad(pt, aimed.pad, 0.9)) break;
+      preview.push(pt);
+      continue;
+    }
+    if (pt.z > CONFIG.aimReach) break;
+    if (livePads().some((pad) => !outsidePad(pt, pad, margin))) break;
     preview.push(pt);
   }
-  const line = farAim
-    ? aroundReached(preview, pads.filter((pad) => pad.reached && pad !== target), target, margin)
-    : preview;
-  const last = Math.max(0, line.length - 1);
+  const last = Math.max(0, preview.length - 1);
   for (let i = 0; i < DOTS; i += 1) {
     const dot = dots[i];
-    const pt = line.length ? line[last === 0 ? 0 : Math.round((i / (DOTS - 1)) * last)] : null;
+    const pt = preview.length ? preview[last === 0 ? 0 : Math.round((i / (DOTS - 1)) * last)] : null;
     dot.visible = show && !!pt;
     if (!pt) continue;
     dot.position.set(pt.x, Math.max(pt.y, 0.12), pt.z);

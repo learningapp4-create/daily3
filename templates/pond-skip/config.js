@@ -13,7 +13,7 @@ export const CONFIG = {
 
   // The throw. Angle 0 points straight up the pond, between the flowers.
   startAngle: 0,
-  angleStep: 0.12,
+  angleStep: 0.06,
   angleMin: -0.72,
   angleMax: 0.72,
   speed: 9.2,
@@ -22,6 +22,9 @@ export const CONFIG = {
   bounce: 0.72,
   sinkSpeed: 3.8,
   maxSkips: 8,
+  // The stone lands only this close to a flower's middle. A line that
+  // merely points that way, or passes beside the pad, sinks.
+  hit: 0.55,
   // Aim dots travel toward a pad, then stop this far outside the flower.
   aimReach: 8.2,
   aimMargin: 0.45,
@@ -31,7 +34,7 @@ export const CONFIG = {
   pads: [
     { x: -2.15, y: 0.08, z: 9.55, radius: 1.55 },
     { x: 2.15, y: 0.08, z: 9.55, radius: 1.55 },
-    { x: 3.5, y: 0.08, z: 13.05, radius: 1.48 },
+    { x: 5.8, y: 0.08, z: 12.2, radius: 1.48 },
   ],
 
   colors: {

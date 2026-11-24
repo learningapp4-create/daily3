@@ -10,7 +10,8 @@ Edit `config.js`.
 - `aimReach` — how far the aim dots travel toward the pads
 - `aimMargin` — how far the dots stay outside a flower
 - `speed`, `lift`, `gravity`, `bounce`, `sinkSpeed`, `maxSkips` — the skip
-- `pads` — the flower pads. `x` and `z` place each one, `radius` is how near the stone must come
+- `hit` — how near the stone must come to a flower's middle
+- `pads` — the flower pads. `x` and `z` place each one, `radius` is the lily's size
 - `colors` — sky, water, sand, stone, lily, aim dots
 - `sounds` — files for the throw, a skip, the pad, and a gentle plop. `soundVolume` turns them down
 
