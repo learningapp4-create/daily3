@@ -202,27 +202,27 @@ const gardens = CONFIG.gardens.map((spec) => {
 
 const balloon = new THREE.Group();
 const envelope = new THREE.Mesh(
-  new THREE.SphereGeometry(0.52, 14, 12),
+  new THREE.SphereGeometry(0.16, 12, 10),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.balloon }),
 );
 balloon.add(envelope);
 const knot = new THREE.Mesh(
-  new THREE.SphereGeometry(0.08, 6, 5),
+  new THREE.SphereGeometry(0.035, 6, 5),
   new THREE.MeshLambertMaterial({ color: "#b42332" }),
 );
-knot.position.y = -0.5;
+knot.position.y = -0.17;
 balloon.add(knot);
 const stringMat = new THREE.MeshLambertMaterial({ color: "#f4efe4" });
-for (const side of [-0.12, 0.12]) {
-  const line = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.55, 4), stringMat);
-  line.position.set(side, -0.78, 0);
+for (const side of [-0.04, 0.04]) {
+  const line = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 4), stringMat);
+  line.position.set(side, -0.2, 0);
   balloon.add(line);
 }
 const basket = new THREE.Mesh(
-  new THREE.BoxGeometry(0.36, 0.22, 0.36),
+  new THREE.BoxGeometry(0.14, 0.07, 0.14),
   new THREE.MeshLambertMaterial({ color: CONFIG.colors.basket }),
 );
-basket.position.y = -1.12;
+basket.position.y = -0.2;
 balloon.add(basket);
 scene.add(balloon);
 
@@ -253,7 +253,7 @@ let lastGardenPlan = "";
 function shuffleGardens() {
   const step = CONFIG.heightStep;
   const start = CONFIG.startHeight;
-  const offset = Math.min(CONFIG.band * 0.45, Math.max(0.04, (step - CONFIG.band) * 0.3));
+  const offset = 0;
   const valid = (score) => score - step >= CONFIG.minHeight - 1e-6 && score + step <= CONFIG.maxHeight + 1e-6;
   const options = (from, first) => {
     const list = [];
@@ -434,7 +434,7 @@ function step(dt) {
     const dz = along - garden.z;
     const aligned = Math.abs(height - garden.y) <= CONFIG.band;
     const aimed = Math.abs(target - garden.y) <= CONFIG.band;
-    if (aligned && dz > -4.6 && dz < CONFIG.reach) {
+    if (aligned && dz > -13.2 && dz < CONFIG.reach) {
       garden.got = true;
       met += 1;
       playSound("bloom");
