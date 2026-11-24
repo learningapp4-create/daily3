@@ -79,7 +79,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.sky);
-const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 140);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 17);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.82));
 const sun = new THREE.DirectionalLight(0xfff6e0, 0.7);
@@ -253,7 +253,7 @@ let lastGardenPlan = "";
 function shuffleGardens() {
   const step = CONFIG.heightStep;
   const start = CONFIG.startHeight;
-  const offset = Math.min(CONFIG.band * 0.75, Math.max(0.05, step - CONFIG.band - 0.05));
+  const offset = Math.min(CONFIG.band * 0.45, Math.max(0.04, (step - CONFIG.band) * 0.3));
   const valid = (score) => score - step >= CONFIG.minHeight - 1e-6 && score + step <= CONFIG.maxHeight + 1e-6;
   const options = (from, first) => {
     const list = [];
@@ -297,15 +297,21 @@ function resetPlay() {
     garden.got = false;
     garden.missed = false;
     garden.group.rotation.x = 0;
+    garden.group.rotation.z = 0;
     garden.group.position.y = garden.y;
     garden.shelfMat.color.set(garden.color);
-    for (const stem of garden.stems) stem.rotation.x = 0;
+    for (const stem of garden.stems) {
+      stem.rotation.x = 0;
+      stem.rotation.z = 0;
+      stem.material.color.set("#3f8f4a");
+    }
     for (const bloom of garden.blooms) {
       bloom.material.color.set(garden.color);
       bloom.scale.setScalar(1);
     }
   }
   balloon.position.set(0, height, along);
+  showGardens();
   paintGardens();
   paintScore();
   placeCamera();
@@ -335,18 +341,31 @@ function paintGardens() {
 
 function markMissed(garden) {
   garden.missed = true;
-  garden.group.rotation.x = 1.25;
-  garden.group.position.y = garden.y - 0.7;
-  for (const stem of garden.stems) stem.rotation.x = 1.5;
+  garden.group.rotation.z = 0.42;
+  garden.group.position.y = garden.y - 0.06;
+  for (const stem of garden.stems) {
+    stem.material.color.set("#6b3e2a");
+    stem.rotation.z = 1.15;
+  }
   for (const bloom of garden.blooms) {
     bloom.material.color.set("#7a4328");
-    bloom.scale.setScalar(2.6);
+    bloom.scale.setScalar(1.2);
   }
 }
 
 function placeCamera() {
-  camera.position.set(4.8, 4.4, along - 6.2);
-  camera.lookAt(-2, 1.3, along + 1);
+  camera.position.set(4.6, height, along - 5.4);
+  camera.lookAt(-1.6, height, along + 2.4);
+}
+
+function showGardens() {
+  let open = true;
+  for (const garden of gardens) {
+    const behind = along > garden.z + 2.4;
+    const show = open && !behind;
+    garden.group.visible = show;
+    if (show || !behind) open = false;
+  }
 }
 
 function changeHeight(dir) {
@@ -398,11 +417,12 @@ window.addEventListener("keydown", (e) => {
 
 function step(dt) {
   clock += dt;
-  height += (target - height) * (1 - Math.exp(-6 * dt));
+  height += (target - height) * (1 - Math.exp(-3.4 * dt));
   along += CONFIG.drift * dt;
   balloon.position.set(0, height + Math.sin(clock * 1.8) * 0.04, along);
   envelope.rotation.z = Math.sin(clock * 1.2) * 0.06;
   bobBirds();
+  showGardens();
   paintGardens();
   for (const garden of gardens) {
     if (garden.got) {
@@ -410,10 +430,11 @@ function step(dt) {
       for (const bloom of garden.blooms) bloom.scale.setScalar(s);
       continue;
     }
-    const dz = along - garden.z;
-    if (!garden.missed && dz > CONFIG.reach) markMissed(garden);
     if (garden.missed) continue;
-    if (Math.abs(height - garden.y) <= CONFIG.band && dz > -0.35 && dz < CONFIG.reach) {
+    const dz = along - garden.z;
+    const aligned = Math.abs(height - garden.y) <= CONFIG.band;
+    const aimed = Math.abs(target - garden.y) <= CONFIG.band;
+    if (aligned && dz > -4.6 && dz < CONFIG.reach) {
       garden.got = true;
       met += 1;
       playSound("bloom");
@@ -422,6 +443,10 @@ function step(dt) {
         finish(true);
         return;
       }
+    } else if (!aligned && !aimed && dz > -1.15) {
+      markMissed(garden);
+    } else if (!aligned && dz > -0.2) {
+      markMissed(garden);
     }
   }
   placeCamera();

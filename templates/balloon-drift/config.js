@@ -11,15 +11,16 @@ export const CONFIG = {
   },
 
   drift: 1.8,
-  heightStep: 0.5,
+  heightStep: 0.34,
   minHeight: 0.7,
   maxHeight: 5.2,
   startHeight: 2.2,
-  band: 0.2,
+  band: 0.16,
   reach: 1.35,
   endZ: 40,
 
   // z stays put so later gardens stay ahead of the view. Each round picks a new y.
+  // heightStep is one press. The matching height sits on that step.
   gardens: [
     { z: 6.4, y: 3.35, color: "#f0c24b", bright: "#ffe9a8" },
     { z: 21.6, y: 1.35, color: "#e56b8a", bright: "#ffd0dc" },
