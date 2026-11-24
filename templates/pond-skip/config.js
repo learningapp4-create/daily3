@@ -39,6 +39,7 @@ export const CONFIG = {
 
   start: { x: 0, y: 0.45, z: 0.2 },
   waterY: 0.02,
+  // Each round moves the flowers. radius is the lily; x and z are a spare spot.
   pads: [
     { x: -2.15, y: 0.08, z: 9.55, radius: 1.55 },
     { x: 2.15, y: 0.08, z: 9.55, radius: 1.55 },

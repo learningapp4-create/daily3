@@ -15,7 +15,7 @@ Edit `config.js`.
 - `catch` — how close that flower must be to the end of the line
 - `speed`, `lift`, `gravity`, `bounce`, `sinkSpeed`, `maxSkips` — the skip
 - `hit` — how near the stone must come to a flower's middle
-- `pads` — the flower pads. `x` and `z` place each one, `radius` is the lily's size
+- `pads` — the flowers. `radius` is the lily. Each round moves `x` and `z` to new aims
 - `colors` — sky, water, sand, stone, lily, aim dots
 - `sounds` — files for the throw, a skip, the pad, and a gentle plop. `soundVolume` turns them down
 

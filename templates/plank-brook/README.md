@@ -6,8 +6,8 @@ Planks on the bank fit the gaps in a brook. The duck crosses when the gaps are f
 
 Edit `config.js`.
 
-- `gaps` — each `need` is how long a plank must be to fill that gap
-- `planks` — each `length`. The list order is how they sit on the bank
+- `gaps` — each `need` is a gap length. Each round swaps which gap is which
+- `planks` — each `length`. Each round swaps which plank is which length
 - `fitSlack` — how near a length must be to a gap
 - `walkSeconds` — how long the duck takes to cross
 - `colors` — grass, water, posts, planks, duck

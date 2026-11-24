@@ -120,11 +120,12 @@ const gapTargets = gaps.map((gap) => {
 
 const postMat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.post });
 const postGeo = new THREE.CylinderGeometry(postR, postR * 1.08, 0.72, 8);
-for (const x of postXs) {
+const postMeshes = postXs.map((x) => {
   const post = new THREE.Mesh(postGeo, postMat);
   post.position.set(x, 0.36, 0);
   scene.add(post);
-}
+  return post;
+});
 
 const planks = CONFIG.planks.map((spec, index) => {
   const mat = new THREE.MeshLambertMaterial({ color: CONFIG.colors.plank });
@@ -141,6 +142,7 @@ const planks = CONFIG.planks.map((spec, index) => {
   return {
     index,
     length: spec.length,
+    built: spec.length,
     mesh,
     mat,
     home,
@@ -244,6 +246,57 @@ function duckHome() {
   duck.rotation.y = -Math.PI / 2;
 }
 
+let lastPlankPlan = "";
+
+function shufflePlanks() {
+  const mix = (list) => {
+    const copy = list.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+  const lengths = CONFIG.planks.map((plank) => plank.length);
+  const needs = CONFIG.gaps.map((gap) => gap.need);
+  let plan = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const plankLengths = mix(lengths);
+    const gapNeeds = mix(needs);
+    const key = `${plankLengths.join(",")}|${gapNeeds.join(",")}`;
+    if (key === lastPlankPlan) continue;
+    const used = new Set();
+    const fits = gapNeeds.every((need) => {
+      const matches = plankLengths.filter((length, index) => (
+        Math.abs(length - need) <= CONFIG.fitSlack && !used.has(index) && used.add(index)
+      ));
+      return matches.length === 1;
+    });
+    if (!fits || used.size !== gapNeeds.length) continue;
+    plan = { plankLengths, gapNeeds, key };
+    break;
+  }
+  if (!plan) return;
+  lastPlankPlan = plan.key;
+  planks.forEach((plank, index) => {
+    plank.length = plan.plankLengths[index];
+    plank.mesh.scale.x = plank.length / plank.built;
+  });
+  let cursor = postXs[0];
+  postMeshes[0].position.x = cursor;
+  plan.gapNeeds.forEach((need, index) => {
+    const start = cursor;
+    cursor = start + postR * 2 + need;
+    postXs[index + 1] = cursor;
+    postMeshes[index + 1].position.x = cursor;
+    gaps[index].need = need;
+    gaps[index].x = (start + cursor) / 2;
+    gapTargets[index].position.x = gaps[index].x;
+    gapTargets[index].scale.x = need / CONFIG.gaps[index].need;
+  });
+  cursorX = cursor;
+}
+
 function resetRound() {
   mode = "ready";
   focusAt = 0;
@@ -252,6 +305,7 @@ function resetRound() {
   walking = false;
   walkT = 0;
   pauseBtn.textContent = "Pause";
+  shufflePlanks();
   for (const gap of gaps) gap.filled = false;
   for (const plank of planks) {
     plank.selected = false;

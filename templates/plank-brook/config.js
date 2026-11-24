@@ -16,6 +16,7 @@ export const CONFIG = {
 
   fitSlack: 0.1,
   walkSeconds: 2.4,
+  // Each round swaps which plank fits which gap. Lengths stay this close.
   gaps: [
     { need: 1.72 },
     { need: 2.36 },

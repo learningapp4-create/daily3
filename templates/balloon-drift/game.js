@@ -248,7 +248,45 @@ function hideCard() {
   card.hidden = true;
 }
 
+let lastGardenPlan = "";
+
+function shuffleGardens() {
+  const step = CONFIG.heightStep;
+  const start = CONFIG.startHeight;
+  const offset = Math.min(CONFIG.band * 0.75, Math.max(0.05, step - CONFIG.band - 0.05));
+  const valid = (score) => score - step >= CONFIG.minHeight - 1e-6 && score + step <= CONFIG.maxHeight + 1e-6;
+  const options = (from, first) => {
+    const list = [];
+    for (const dir of [-1, 1]) {
+      for (const count of (first ? [2] : [1, 2])) {
+        const next = Math.round((from + dir * count * step) * 100) / 100;
+        if (valid(next)) list.push({ dir, count, next });
+      }
+    }
+    return list;
+  };
+  const plans = [];
+  for (const first of options(start, true)) {
+    for (const second of options(first.next, false)) {
+      for (const third of options(second.next, false)) {
+        const moves = [first, second, third];
+        const key = moves.map((move) => (move.dir > 0 ? "H" : "L").repeat(move.count)).join(",");
+        const ys = moves.map((move) => Math.round((move.next + move.dir * offset) * 100) / 100);
+        plans.push({ key, ys });
+      }
+    }
+  }
+  const choices = plans.filter((plan) => plan.key !== lastGardenPlan);
+  const plan = choices[Math.floor(Math.random() * choices.length)] || plans[0];
+  if (!plan) return;
+  lastGardenPlan = plan.key;
+  gardens.forEach((garden, index) => {
+    garden.y = plan.ys[index];
+  });
+}
+
 function resetPlay() {
+  shuffleGardens();
   height = CONFIG.startHeight;
   target = CONFIG.startHeight;
   along = 0;

@@ -398,6 +398,126 @@ function hideCard() {
   card.hidden = true;
 }
 
+function stonePath(angle) {
+  const pts = [];
+  let px = CONFIG.start.x;
+  let pz = CONFIG.start.z;
+  let py = CONFIG.start.y;
+  let vx = Math.sin(angle) * CONFIG.speed;
+  let vz = Math.cos(angle) * CONFIG.speed;
+  let vy = CONFIG.lift;
+  let skips = 0;
+  const dt = 0.016;
+  for (let i = 0; i < 520; i += 1) {
+    pts.push({ x: px, y: py, z: pz });
+    vy -= CONFIG.gravity * dt;
+    px += vx * dt;
+    pz += vz * dt;
+    py += vy * dt;
+    if (py <= CONFIG.waterY) {
+      if (pz > 16 || vy < -CONFIG.sinkSpeed || skips >= CONFIG.maxSkips) break;
+      py = CONFIG.waterY;
+      vy = Math.abs(vy) * CONFIG.bounce;
+      vx *= 0.98;
+      vz *= 0.98;
+      skips += 1;
+    }
+    if (py < -2 || Math.abs(px) > 16) break;
+  }
+  return pts;
+}
+
+function inPond(x, z, radius) {
+  return Math.hypot(x, z - 9.8) + radius < 9.32;
+}
+
+let lastAims = "";
+
+function placeFlowers() {
+  const step = CONFIG.angleStep;
+  const aims = [];
+  const nMin = Math.round(CONFIG.angleMin / step);
+  const nMax = Math.round(CONFIG.angleMax / step);
+  for (let n = nMin; n <= nMax; n += 1) {
+    aims.push({ n, pts: stonePath(n * step) });
+  }
+  const slots = [];
+  for (const lane of aims) {
+    if (Math.abs(lane.n) < 3) continue;
+    for (const zWant of [9.1, 10.2, 11.3, 12.3]) {
+      let best = null;
+      for (const pt of lane.pts) {
+        if (pt.y < 0 || pt.y > 1.05) continue;
+        if (Math.abs(pt.z - zWant) > 0.4) continue;
+        if (!best || Math.abs(pt.z - zWant) < Math.abs(best.z - zWant)) best = pt;
+      }
+      if (!best) continue;
+      const radius = 1.55;
+      if (!inPond(best.x, best.z, radius) || !inPond(best.x, best.z + CONFIG.drift, radius)) continue;
+      const hits = [];
+      for (const other of aims) {
+        const near = other.pts.some((pt) => (
+          pt.y > -0.4 && pt.y < 1.15
+          && (pt.x - best.x) ** 2 + (pt.z - best.z) ** 2 <= CONFIG.hit * CONFIG.hit
+        ));
+        if (near) hits.push(other.n);
+      }
+      if (hits.length !== 1 || Math.abs(hits[0]) < 3) continue;
+      const x = Math.round(best.x * 100) / 100;
+      const z = Math.round(best.z * 100) / 100;
+      if (slots.some((slot) => Math.hypot(slot.x - x, slot.z - z) < 0.35)) continue;
+      slots.push({ n: hits[0], x, z, r: radius });
+    }
+  }
+  const crowded = (a, b) => {
+    const need = a.r + b.r + 0.3;
+    for (const za of [a.z, a.z + CONFIG.drift]) {
+      for (const zb of [b.z, b.z + CONFIG.drift]) {
+        if (Math.hypot(a.x - b.x, za - zb) < need) return true;
+      }
+    }
+    return false;
+  };
+  const blocked = (slot, others) => {
+    const pts = aims.find((lane) => lane.n === slot.n).pts;
+    for (const pt of pts) {
+      if (pt.y < -0.5 || pt.y > 1.3) continue;
+      if (Math.hypot(pt.x - slot.x, pt.z - slot.z) < 0.45) return false;
+      if (others.some((other) => Math.hypot(pt.x - other.x, pt.z - other.z) < other.r + 0.12)) return true;
+    }
+    return true;
+  };
+  const byKey = new Map();
+  for (let i = 0; i < slots.length; i += 1) {
+    for (let j = i + 1; j < slots.length; j += 1) {
+      if (slots[i].n === slots[j].n || crowded(slots[i], slots[j])) continue;
+      for (let k = j + 1; k < slots.length; k += 1) {
+        const trio = [slots[i], slots[j], slots[k]];
+        if (new Set(trio.map((slot) => slot.n)).size < 3) continue;
+        if (crowded(slots[i], slots[k]) || crowded(slots[j], slots[k])) continue;
+        if (trio.some((slot) => blocked(slot, trio.filter((other) => other !== slot)))) continue;
+        const key = trio.map((slot) => slot.n).sort((a, b) => a - b).join(",");
+        if (!byKey.has(key)) byKey.set(key, []);
+        const list = byKey.get(key);
+        if (list.length < 4) list.push(trio);
+      }
+    }
+  }
+  const keys = [...byKey.keys()].filter((key) => key !== lastAims);
+  const key = keys[Math.floor(Math.random() * keys.length)] || [...byKey.keys()][0];
+  const choices = key ? byKey.get(key) : null;
+  if (!choices || !choices.length) return;
+  const trio = choices[Math.floor(Math.random() * choices.length)];
+  lastAims = key;
+  pads.forEach((pad, index) => {
+    const spot = trio[index];
+    pad.homeX = spot.x;
+    pad.homeZ = spot.z;
+    pad.x = spot.x;
+    pad.z = spot.z;
+  });
+}
+
 function resetRound() {
   mode = "ready";
   angle = CONFIG.startAngle;
@@ -408,6 +528,7 @@ function resetRound() {
   landHold = 0;
   landPad = null;
   pauseBtn.textContent = "Pause";
+  placeFlowers();
   for (const pad of pads) {
     pad.reached = false;
     pad.marker.visible = false;
