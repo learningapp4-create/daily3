@@ -151,7 +151,7 @@ const pads = CONFIG.pads.map((spec, index) => {
     ...spec,
     homeX: spec.x,
     homeZ: spec.z,
-    phase: [6.2, 7.5, 5.6][index],
+    phase: [10, 0, 8.5][index],
     mesh,
     flower,
     marker,
@@ -332,24 +332,22 @@ function driftWave(t, phase) {
   const away = CONFIG.driftAway;
   const period = sit + away;
   const cycle = ((t + phase) % period + period) % period;
-  const alpha = Math.acos(1 - 2 * (CONFIG.catch / CONFIG.drift));
-  const phi = cycle < sit
-    ? -alpha + (2 * alpha) * (cycle / sit)
-    : alpha + (Math.PI * 2 - 2 * alpha) * ((cycle - sit) / away);
-  return (1 - Math.cos(phi)) * 0.5;
+  if (cycle < sit) return 0;
+  const p = (cycle - sit) / away;
+  const edge = 0.16;
+  const smooth = (u) => u * u * (3 - 2 * u);
+  if (p < edge) return smooth(p / edge);
+  if (p > 1 - edge) return smooth((1 - p) / edge);
+  return 1;
 }
 
 function driftPads(t) {
   if (flight) return;
   for (const pad of pads) {
     if (pad.reached) continue;
-    const wave = driftWave(t, pad.phase);
-    const ox = pad.homeX;
-    const oz = pad.homeZ - 9.8;
-    const span = Math.hypot(ox, oz) || 1;
-    const slide = wave * CONFIG.drift;
-    pad.x = pad.homeX + (ox / span) * slide;
-    pad.z = pad.homeZ + (oz / span) * slide;
+    const slide = driftWave(t, pad.phase) * CONFIG.drift;
+    pad.x = pad.homeX;
+    pad.z = pad.homeZ + slide;
     pad.mesh.position.x = pad.x;
     pad.mesh.position.z = pad.z;
     pad.flower.position.x = pad.x;
