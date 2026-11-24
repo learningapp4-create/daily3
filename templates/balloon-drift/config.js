@@ -19,11 +19,12 @@ export const CONFIG = {
   reach: 1.35,
   endZ: 40,
 
-  // None of these heights is the start height. Later gardens sit ahead of the view.
+  // None of these heights is the start height, and each one sits between two presses.
+  // Later gardens sit ahead of the view.
   gardens: [
-    { z: 6.4, y: 3.2, color: "#f0c24b", bright: "#ffe9a8" },
-    { z: 21.6, y: 1.2, color: "#e56b8a", bright: "#ffd0dc" },
-    { z: 36.8, y: 3.2, color: "#7dce6a", bright: "#d8f5c4" },
+    { z: 6.4, y: 3.35, color: "#f0c24b", bright: "#ffe9a8" },
+    { z: 21.6, y: 1.35, color: "#e56b8a", bright: "#ffd0dc" },
+    { z: 36.8, y: 3.35, color: "#7dce6a", bright: "#d8f5c4" },
   ],
 
   colors: {

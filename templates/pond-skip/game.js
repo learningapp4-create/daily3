@@ -147,7 +147,16 @@ const pads = CONFIG.pads.map((spec, index) => {
   marker.position.set(spec.x, spec.y + 0.22, spec.z - 0.42);
   marker.visible = false;
   scene.add(marker);
-  return { ...spec, mesh, flower, marker, reached: false };
+  return {
+    ...spec,
+    homeX: spec.x,
+    homeZ: spec.z,
+    phase: [3.4, 4.3, 2.6][index],
+    mesh,
+    flower,
+    marker,
+    reached: false,
+  };
 });
 
 const leafMat = new THREE.MeshLambertMaterial({ color: "#9aaa52" });
@@ -241,7 +250,7 @@ function livePads() {
   return pads.filter((pad) => !pad.reached);
 }
 
-function simulate(angle) {
+function simulate(angle, atHome, allow) {
   const pts = [];
   let px = CONFIG.start.x;
   let pz = CONFIG.start.z;
@@ -253,8 +262,8 @@ function simulate(angle) {
   let result = "fly";
   let landed = null;
   const dt = 0.016;
-  const active = livePads();
-  const far = active.length ? Math.max(...active.map((pad) => pad.z)) + 1.6 : 6;
+  const active = allow === undefined ? livePads() : (allow ? [allow] : []);
+  const far = livePads().length ? Math.max(...livePads().map((pad) => pad.homeZ)) + 1.6 : 6;
   for (let i = 0; i < 520; i += 1) {
     pts.push({ x: px, y: py, z: pz, skip: skips });
     vy -= CONFIG.gravity * dt;
@@ -262,12 +271,14 @@ function simulate(angle) {
     pz += vz * dt;
     py += vy * dt;
     for (const pad of active) {
-      const dx = px - pad.x;
-      const dz = pz - pad.z;
+      const padX = atHome ? pad.homeX : pad.x;
+      const padZ = atHome ? pad.homeZ : pad.z;
+      const dx = px - padX;
+      const dz = pz - padZ;
       if (dx * dx + dz * dz <= CONFIG.hit * CONFIG.hit && py < 1.15 && py > -0.4) {
         result = "across";
         landed = pad;
-        pts.push({ x: pad.x, y: pad.y + 0.2, z: pad.z, skip: skips });
+        pts.push({ x: padX, y: pad.y + 0.2, z: padZ, skip: skips });
         break;
       }
     }
@@ -310,15 +321,35 @@ function homeStone() {
 }
 
 function outsidePad(pt, pad, margin) {
-  const dx = pt.x - pad.x;
-  const dz = pt.z - pad.z;
+  const dx = pt.x - pad.homeX;
+  const dz = pt.z - pad.homeZ;
   const keep = pad.radius + margin;
   return dx * dx + dz * dz > keep * keep;
 }
 
+function driftPads(t) {
+  if (flight) return;
+  for (const pad of pads) {
+    if (pad.reached) continue;
+    const wave = (1 - Math.cos(t * CONFIG.driftSpeed + pad.phase)) * 0.5;
+    const ox = pad.homeX;
+    const oz = pad.homeZ - 9.8;
+    const span = Math.hypot(ox, oz) || 1;
+    const slide = wave * CONFIG.drift;
+    pad.x = pad.homeX + (ox / span) * slide;
+    pad.z = pad.homeZ + (oz / span) * slide;
+    pad.mesh.position.x = pad.x;
+    pad.mesh.position.z = pad.z;
+    pad.flower.position.x = pad.x;
+    pad.flower.position.z = pad.z;
+    pad.marker.position.x = pad.x;
+    pad.marker.position.z = pad.z - 0.42;
+  }
+}
+
 function paintAim() {
   const show = !flight && landHold <= 0 && mode !== "end";
-  const sim = simulate(angle);
+  const sim = simulate(angle, true);
   const preview = [];
   for (const pt of sim.pts) {
     if (sim.landed) {
@@ -372,6 +403,7 @@ function resetRound() {
     pad.marker.visible = false;
   }
   homeStone();
+  driftPads(clock);
   paintAim();
   paintScore();
   showCard(CONFIG.readyTitle, "Go");
@@ -393,7 +425,16 @@ function aim(dir) {
 
 function doThrow() {
   if (mode !== "play" || flight || settle > 0 || landHold > 0) return;
-  const sim = simulate(angle);
+  const lane = simulate(angle, true);
+  const ready = lane.landed && Math.hypot(lane.landed.x - lane.landed.homeX, lane.landed.z - lane.landed.homeZ) <= CONFIG.catch;
+  let sim = simulate(angle, false, null);
+  if (ready) {
+    const pts = lane.pts.map((pt) => ({ ...pt }));
+    const last = pts[pts.length - 1];
+    const pad = lane.landed;
+    pts[pts.length - 1] = { x: pad.x, y: pad.y + 0.2, z: pad.z, skip: last.skip };
+    sim = { pts, result: "across", landed: pad };
+  }
   flight = sim;
   flightAt = 0;
   heardSkip = 0;
@@ -456,8 +497,9 @@ window.addEventListener("keydown", (e) => {
 
 function step(dt) {
   clock += dt;
+  driftPads(clock);
   for (const pad of pads) {
-    pad.flower.position.y = pad.y + Math.sin(clock * 1.6 + pad.x) * 0.03;
+    pad.flower.position.y = pad.y + Math.sin(clock * 1.6 + pad.homeX) * 0.03;
   }
   swimFish(clock);
   if (landHold > 0 && landPad) {

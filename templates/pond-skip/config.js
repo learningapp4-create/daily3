@@ -29,6 +29,11 @@ export const CONFIG = {
   aimReach: 4.4,
   // A line that will land stops this close to the pad, still off the flower.
   aimMargin: 0.08,
+  // Flowers slide this far out from the dots, then come back. A throw lands
+  // while the flower is still this close to the end of the line.
+  drift: 1.55,
+  driftSpeed: 0.42,
+  catch: 0.48,
 
   start: { x: 0, y: 0.45, z: 0.2 },
   waterY: 0.02,
