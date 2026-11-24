@@ -9,7 +9,9 @@ Edit `config.js`.
 - `startAngle`, `angleStep`, `angleMin`, `angleMax` — where the throw begins, and how far Left and Right turn it
 - `aimReach` — how far a line that will sink travels before it stops in open water
 - `aimMargin` — how far a landing line stays outside the flower
-- `drift`, `driftSpeed` — how far a flower slides past the dots, and how slowly it comes back
+- `drift` — how far a flower slides past the dots
+- `driftSit` — how long a flower stays on the end of the line
+- `driftAway` — how soon that flower comes back after it leaves
 - `catch` — how close that flower must be to the end of the line
 - `speed`, `lift`, `gravity`, `bounce`, `sinkSpeed`, `maxSkips` — the skip
 - `hit` — how near the stone must come to a flower's middle

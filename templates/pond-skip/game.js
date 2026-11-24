@@ -151,7 +151,7 @@ const pads = CONFIG.pads.map((spec, index) => {
     ...spec,
     homeX: spec.x,
     homeZ: spec.z,
-    phase: [3.4, 4.3, 2.6][index],
+    phase: [6.2, 7.5, 5.6][index],
     mesh,
     flower,
     marker,
@@ -327,11 +327,23 @@ function outsidePad(pt, pad, margin) {
   return dx * dx + dz * dz > keep * keep;
 }
 
+function driftWave(t, phase) {
+  const sit = CONFIG.driftSit;
+  const away = CONFIG.driftAway;
+  const period = sit + away;
+  const cycle = ((t + phase) % period + period) % period;
+  const alpha = Math.acos(1 - 2 * (CONFIG.catch / CONFIG.drift));
+  const phi = cycle < sit
+    ? -alpha + (2 * alpha) * (cycle / sit)
+    : alpha + (Math.PI * 2 - 2 * alpha) * ((cycle - sit) / away);
+  return (1 - Math.cos(phi)) * 0.5;
+}
+
 function driftPads(t) {
   if (flight) return;
   for (const pad of pads) {
     if (pad.reached) continue;
-    const wave = (1 - Math.cos(t * CONFIG.driftSpeed + pad.phase)) * 0.5;
+    const wave = driftWave(t, pad.phase);
     const ox = pad.homeX;
     const oz = pad.homeZ - 9.8;
     const span = Math.hypot(ox, oz) || 1;
