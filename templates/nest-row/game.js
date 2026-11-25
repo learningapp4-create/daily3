@@ -256,17 +256,31 @@ function step(dt) {
   if (!trip && egg) egg.position.y = CONFIG.eggY + Math.sin(clock * 3) * 0.05;
   if (!trip) return;
   trip.t += dt;
-  const dur = trip.phase === "go" ? CONFIG.sendSeconds : CONFIG.backSeconds;
+  const going = trip.phase === "go";
+  const dur = going ? CONFIG.sendSeconds : CONFIG.backSeconds;
   const k = Math.min(1, trip.t / dur);
   const eased = k * k * (3 - 2 * k);
-  egg.position.x = trip.from + (trip.to - trip.from) * eased;
-  egg.position.z = trip.phase === "go" ? 3.2 + (-5.0 * eased) : 3.2 * eased - 1.8 * (1 - eased);
-  egg.position.y = CONFIG.eggY + Math.sin(eased * Math.PI) * 0.35;
-  if (k < 1) return;
-  if (trip.phase === "go" && trip.match) {
+  if (going) {
+    const along = trip.match ? eased : Math.min(eased, CONFIG.turnBack);
+    egg.position.x = trip.from + (trip.to - trip.from) * along;
+    egg.position.z = 3.2 + (trip.nest.group.position.z - 3.2) * along;
+    const crest = trip.match ? along : along / CONFIG.turnBack;
+    const lift = trip.match ? 0.7 : 0.18;
+    egg.position.y = CONFIG.eggY + Math.sin(crest * Math.PI) * lift;
+    if (!trip.match && eased >= CONFIG.turnBack) {
+      playSound("back");
+      trip.phase = "back";
+      trip.t = 0;
+      trip.from = egg.position.x;
+      trip.fromZ = egg.position.z;
+      trip.fromY = egg.position.y;
+      trip.to = 0;
+      return;
+    }
+    if (k < 1) return;
     playSound("home");
     const kept = egg.clone();
-    kept.position.set(trip.nest.x, 0.78, -1.8);
+    kept.position.set(trip.nest.x, 0.78, trip.nest.group.position.z);
     kept.scale.setScalar(0.7);
     kept.visible = true;
     scene.add(kept);
@@ -280,14 +294,10 @@ function step(dt) {
     else showEgg();
     return;
   }
-  if (trip.phase === "go") {
-    playSound("back");
-    trip.phase = "back";
-    trip.t = 0;
-    trip.from = trip.nest.x;
-    trip.to = 0;
-    return;
-  }
+  egg.position.x = trip.from + (trip.to - trip.from) * eased;
+  egg.position.z = trip.fromZ + (3.2 - trip.fromZ) * eased;
+  egg.position.y = trip.fromY + (CONFIG.eggY - trip.fromY) * eased;
+  if (k < 1) return;
   trip = null;
   egg.position.set(0, CONFIG.eggY, 3.2);
 }

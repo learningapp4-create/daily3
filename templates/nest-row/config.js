@@ -14,6 +14,7 @@ export const CONFIG = {
   eggCount: 4,
   sendSeconds: 0.45,
   backSeconds: 0.4,
+  turnBack: 0.28,
   eggY: 0.95,
 
   // Left to right. shape is round, point, or square. mark is the button picture.

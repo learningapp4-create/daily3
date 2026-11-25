@@ -10,6 +10,7 @@ Edit `config.js`.
 - `eggCount` — how many eggs in a round
 - `sendSeconds` — how long an egg takes to reach a nest
 - `backSeconds` — how long a mismatched egg takes to come back
+- `turnBack` — how far along that trip a mismatched egg gets before it turns around
 - `colors` — sky, grass, stump, birds
 - `sounds` — files for sending an egg, a match, a return, and the end. `soundVolume` turns them down
 
