@@ -40,6 +40,14 @@
       color: #1d2a18;
       cursor: pointer;
     }
+    button.hint {
+      animation: hint-bob 0.85s ease-in-out infinite;
+      box-shadow: 0 0 0 5px #ffe08a;
+    }
+    @keyframes hint-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     button:focus-visible { outline: 3px solid #2f6f4e; outline-offset: 2px; }
     #higher, .panel button { background: #3f8f4a; color: #f4fff4; min-width: 8.5rem; }
     #lower { background: #7eb7d6; color: #102018; }
@@ -83,7 +91,7 @@
     <button type="button" id="pause">Pause</button>
     <button type="button" id="reset">Reset</button>
   </footer>
-  <div class="card" id="card">
+  <div class="card" id="card" hidden>
     <div class="panel">
       <h2 id="card-title">Balloon Drift</h2>
       <p id="card-body"></p>

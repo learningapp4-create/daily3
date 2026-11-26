@@ -268,7 +268,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -383,6 +383,10 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  dropBtn.classList.toggle("hint", mode === "play" && met === 0 && !drop);
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
@@ -395,9 +399,11 @@ function frame(now) {
     raft.position.x = raftX;
     driftLife();
     placeCamera();
+    paintHint();
     renderer.render(scene, camera);
     return;
   }
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

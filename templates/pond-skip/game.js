@@ -568,9 +568,63 @@ function resetRound() {
   }
   homeStone();
   driftPads(clock);
+  aimAtSitting();
+  homeStone();
   paintAim();
   paintScore();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
+}
+
+function sittingLanding(a) {
+  const sim = simulate(a, true);
+  if (!sim.landed) return false;
+  const pad = sim.landed;
+  return Math.hypot(pad.x - pad.homeX, pad.z - pad.homeZ) <= CONFIG.catch;
+}
+
+function aimAtSitting() {
+  const step = CONFIG.angleStep;
+  const nMin = Math.round(leanMin / step);
+  const nMax = Math.round(leanMax / step);
+  let best = null;
+  let bestAbs = Infinity;
+  for (let n = nMin; n <= nMax; n += 1) {
+    if (!sittingLanding(n * step)) continue;
+    if (Math.abs(n) < bestAbs) {
+      bestAbs = Math.abs(n);
+      best = n * step;
+    }
+  }
+  if (best != null) angle = best;
+}
+
+function paintHint() {
+  const teach = mode === "play" && met === 0 && !flight && landHold <= 0;
+  let dir = 0;
+  let ready = false;
+  if (teach) {
+    ready = sittingLanding(angle);
+    if (!ready) {
+      const step = CONFIG.angleStep;
+      let bestN = Infinity;
+      for (const way of [-1, 1]) {
+        for (let n = 1; n <= 16; n += 1) {
+          const a = angle + way * n * step;
+          if (a < leanMin - 1e-6 || a > leanMax + 1e-6) break;
+          if (sittingLanding(a)) {
+            if (n < bestN) {
+              bestN = n;
+              dir = way;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+  throwBtn.classList.toggle("hint", teach && ready);
+  leftBtn.classList.toggle("hint", teach && !ready && dir > 0);
+  rightBtn.classList.toggle("hint", teach && !ready && dir < 0);
 }
 
 function begin() {
@@ -750,6 +804,7 @@ function frame(now) {
     for (const pad of pads) pad.flower.rotation.y += dt * 0.4;
     swimFish(performance.now() / 1000);
   }
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

@@ -42,6 +42,14 @@
       color: #241c14;
       cursor: pointer;
     }
+    button.hint {
+      animation: hint-bob 0.85s ease-in-out infinite;
+      box-shadow: 0 0 0 5px #ffe08a;
+    }
+    @keyframes hint-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     button:focus-visible { outline: 3px solid #ffd45a; outline-offset: 2px; }
     #catch.ready, #moon, .panel button { background: #ffd45a; }
     #catch.ready { animation: catchpulse 0.55s ease-in-out infinite; }
@@ -89,7 +97,7 @@
     <button type="button" id="moon" hidden>To the moon</button>
     <button type="button" id="pause">Pause</button>
   </footer>
-  <div class="card" id="card">
+  <div class="card" id="card" hidden>
     <div class="panel">
       <h2 id="card-title">Ring Hop</h2>
       <p id="card-body"></p>

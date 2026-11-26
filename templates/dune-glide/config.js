@@ -69,9 +69,9 @@ export const CONFIG = {
   },
 
   winTitle: "You made camp",
-  missTitle: "Camp is in the middle",
-  shellsTitle: "Missed the shells",
-  offTitle: "Off the sand",
+  missTitle: "The camp is waiting",
+  shellsTitle: "Shells are still on the sand",
+  offTitle: "Back on the dune",
   readyTitle: "Dune Glide",
   readyBody: "",
 };

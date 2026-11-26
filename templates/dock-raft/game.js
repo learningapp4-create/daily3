@@ -188,7 +188,10 @@ function freshPlan(previous) {
   const bag = CONFIG.loads;
   let next = [];
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    next = Array.from({ length: CONFIG.crossings }, () => bag[Math.floor(Math.random() * bag.length)]);
+    const harder = bag.filter((count) => count !== 1);
+    const second = harder.length ? harder[Math.floor(Math.random() * harder.length)] : bag[0];
+    next = [1, second];
+    for (let i = 2; i < CONFIG.crossings; i += 1) next.push(bag[Math.floor(Math.random() * bag.length)]);
     const varied = next.some((value) => value !== next[0]);
     if (varied && next.join(",") !== previous) return next;
   }
@@ -213,7 +216,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -364,12 +367,23 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  const need = plan[crossing];
+  const teach = mode === "play" && met === 0 && !trip && need != null;
+  addBtn.classList.toggle("hint", Boolean(teach && crates < need));
+  takeBtn.classList.toggle("hint", Boolean(teach && crates > need));
+  sendBtn.classList.toggle("hint", Boolean(teach && crates === need));
+  const pulse = 1 + Math.sin(performance.now() * 0.008) * 0.12;
+  mark.scale.set(1, pulse, 1);
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   if (mode === "play") step(dt);
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

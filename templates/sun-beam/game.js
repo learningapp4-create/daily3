@@ -193,12 +193,14 @@ function freshPlan(previous) {
   for (let attempt = 0; attempt < 24; attempt += 1) {
     next = [];
     let at = CONFIG.startSpot;
-    for (let i = 0; i < CONFIG.blooms; i += 1) {
+    const first = at + 1 < CONFIG.spots ? at + 1 : at - 1;
+    next.push(first);
+    at = first;
+    for (let i = 1; i < CONFIG.blooms; i += 1) {
       const bag = [];
       for (let s = 0; s < CONFIG.spots; s += 1) if (s !== at) bag.push(s);
-      const pick = bag[Math.floor(Math.random() * bag.length)];
-      next.push(pick);
-      at = pick;
+      next.push(bag[Math.floor(Math.random() * bag.length)]);
+      at = next[next.length - 1];
     }
     if (next.join(",") !== previous) return next;
   }
@@ -228,7 +230,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -324,12 +326,20 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  const target = plan[bloomIndex];
+  const teach = mode === "play" && met === 0 && !trip && target != null;
+  rightBtn.classList.toggle("hint", Boolean(teach && target > spot));
+  leftBtn.classList.toggle("hint", Boolean(teach && target < spot));
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   if (mode === "play") step(dt);
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

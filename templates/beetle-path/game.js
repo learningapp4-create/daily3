@@ -377,6 +377,16 @@ function restoreStones() {
   }
 }
 
+function turnedAside() {
+  const c = CONFIG.start.c;
+  for (let r = CONFIG.start.r - 1; r >= 0; r -= 1) {
+    const letter = letters[r]?.[c];
+    if (!letter || letter === "F") return null;
+    if (letter !== "N") return tileAt(c, r);
+  }
+  return null;
+}
+
 function homeBeetle() {
   cursor = {
     c: Math.max(0, Math.min(width - 1, CONFIG.start.c)),
@@ -407,7 +417,7 @@ function resetRound() {
   restoreStones();
   homeBeetle();
   paintUndo();
-  showCard(CONFIG.readyTitle, CONFIG.readyBody, "Ready");
+  hideCard();
 }
 
 function turnTile(c, r) {
@@ -595,11 +605,16 @@ function frame(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   spinMarkers(dt);
+  const aside = turnedAside();
   for (const tile of tiles) {
     if (tile.flower) continue;
-    const s = tile.wrong ? 1 + Math.sin(now * 0.012) * 0.05 : 1;
+    const s = tile === aside
+      ? 1.45 + Math.sin(now * 0.008) * 0.2
+      : tile.wrong ? 1 + Math.sin(now * 0.012) * 0.05 : 1;
     tile.marker.scale.setScalar(s);
   }
+  goBtn.classList.toggle("hint", mode === "ready" && !aside && !walk);
+  if (aside && !aside.spin) aside.marker.position.y = 0.22 + Math.sin(now * 0.008) * 0.16;
   if (flowerTile) flowerTile.marker.position.y = 0.18 + Math.sin(now * 0.003) * 0.05;
   placeGuide(now);
   if (mode === "play") {

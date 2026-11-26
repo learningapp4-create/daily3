@@ -317,7 +317,7 @@ function resetRound() {
   ring.visible = false;
   duckHome();
   paintScore();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -437,13 +437,21 @@ function layout(dt) {
     }
     const lift = plank.selected ? 0.34 : 0;
     const bob = Math.sin(clock * 2.2 + plank.index) * 0.03;
-    plank.mesh.position.set(plank.home.x, plank.home.y + lift + bob + hop, plank.home.z);
+    const firstGap = gaps.find((gap) => !gap.filled);
+    const teach = placed === 0 && firstGap && Math.abs(plank.length - firstGap.need) <= CONFIG.fitSlack;
+    const teachBob = teach ? 0.72 + Math.sin(clock * 5) * 0.16 : 0;
+    plank.mesh.position.set(plank.home.x, plank.home.y + lift + bob + hop + teachBob, plank.home.z);
   }
   const held = planks.find((plank) => plank.selected);
-  ring.visible = Boolean(held) && !walking && mode === "play";
-  if (held) {
-    ring.position.set(held.mesh.position.x, 0.06, held.mesh.position.z);
-    ring.scale.setScalar(Math.max(1.15, held.length * 0.48));
+  const firstGap = gaps.find((gap) => !gap.filled);
+  const teachPlank = placed === 0 && firstGap
+    ? planks.find((plank) => !plank.placed && Math.abs(plank.length - firstGap.need) <= CONFIG.fitSlack)
+    : null;
+  const marked = held || teachPlank;
+  ring.visible = Boolean(marked) && !walking && mode === "play";
+  if (marked) {
+    ring.position.set(marked.mesh.position.x, 0.06, marked.mesh.position.z);
+    ring.scale.setScalar(Math.max(1.15, marked.length * 0.48));
   }
   if (walking) {
     walkT += dt / CONFIG.walkSeconds;

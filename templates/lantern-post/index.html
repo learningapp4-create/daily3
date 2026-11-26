@@ -40,6 +40,14 @@
       color: #1d2430;
       cursor: pointer;
     }
+    button.hint {
+      animation: hint-bob 0.85s ease-in-out infinite;
+      box-shadow: 0 0 0 5px #ffe08a;
+    }
+    @keyframes hint-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     button:focus-visible { outline: 3px solid #ffe566; outline-offset: 2px; }
     #drop { background: #ffcc33; min-width: 8.5rem; }
     #sound { min-width: 5.6rem; color: #1d2430; background: #fff8eb; }
@@ -82,7 +90,7 @@
     <button type="button" id="pause">Pause</button>
     <button type="button" id="reset">Reset</button>
   </footer>
-  <div class="card" id="card">
+  <div class="card" id="card" hidden>
     <div class="panel">
       <h2 id="card-title">Lantern Post</h2>
       <p id="card-body"></p>

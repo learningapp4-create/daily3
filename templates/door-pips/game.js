@@ -188,10 +188,12 @@ function paintPips() {
 }
 
 function freshPlan(previous) {
-  const bag = CONFIG.needs;
+  const rest = CONFIG.needs.filter((count) => count > 1);
+  const bag = rest.length ? rest : CONFIG.needs;
   let next = [];
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    next = Array.from({ length: CONFIG.doors }, () => bag[Math.floor(Math.random() * bag.length)]);
+    next = [1];
+    for (let i = 1; i < CONFIG.doors; i += 1) next.push(bag[Math.floor(Math.random() * bag.length)]);
     const varied = next.some((value) => value !== next[0]);
     if (varied && next.join(",") !== previous) return next;
   }
@@ -215,7 +217,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -328,12 +330,19 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  const teach = mode === "play" && met === 0 && !trip;
+  turnBtn.classList.toggle("hint", teach);
+  if (teach && filled === 0) key.rotation.z = Math.sin(performance.now() * 0.005) * 0.45;
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   if (mode === "play") step(dt);
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

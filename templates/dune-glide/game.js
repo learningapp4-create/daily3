@@ -278,8 +278,9 @@ function resetRound() {
   shade.position.set(x, (y ?? 1) + 0.03, z);
   snapCam = true;
   handoff = -1;
+  rollIn = 0;
+  hideCard();
   mode = "ready";
-  showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
 }
 
 function finish(kind) {
@@ -409,7 +410,6 @@ function update(dt) {
       playSound("collect");
     } else if (!shell.missed && along > 0 && z > shell.z + CONFIG.shellRadius) {
       shell.missed = true;
-      goalEl.textContent = "Miss";
       playSound("miss");
     }
   }
@@ -580,16 +580,27 @@ function lowestShellScreenY() {
   return lowest;
 }
 
+function paintHint() {
+  const teach = mode === "play" && shellsGot === 0;
+  leftBtn.classList.toggle("hint", teach);
+  rightBtn.classList.toggle("hint", teach);
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt);
+  paintHint();
   if (dune) {
     frameCamera(dt, snapCam);
     snapCam = false;
   }
   renderer.render(scene, camera);
+  if (mode === "ready" && dune && card.hidden) {
+    mode = "play";
+    rollIn = 0;
+  }
 }
 
 function bindHold(button, side) {
@@ -685,9 +696,6 @@ cardGo.addEventListener("click", () => {
   resetRound();
 });
 
-showCard("Loading", "The sand is settling.", "…");
-cardGo.disabled = true;
-
 const loader = new GLTFLoader();
 loader.load(
   "./dune.glb",
@@ -707,6 +715,7 @@ loader.load(
   },
   undefined,
   () => {
+    card.hidden = false;
     cardTitle.textContent = "Sand missing";
     cardBody.textContent = "dune.glb did not load. Open this folder with a static server.";
     cardGo.hidden = true;

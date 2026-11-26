@@ -214,7 +214,9 @@ function layGates() {
     }
   }
   const choices = plans.filter((plan) => plan.key !== lastGatePlan);
-  const plan = choices[Math.floor(Math.random() * choices.length)] || plans[0];
+  const easy = choices.filter((plan) => plan.starts[0].need === 1);
+  const pool = easy.length ? easy : choices;
+  const plan = pool[Math.floor(Math.random() * pool.length)] || plans[0];
   lastGatePlan = plan.key;
   gates.forEach((gate, index) => {
     const start = plan.starts[index];
@@ -242,7 +244,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -333,6 +335,10 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  turnBtn.classList.toggle("hint", mode === "play" && met === 0);
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
@@ -344,6 +350,7 @@ function frame(now) {
     wagon.position.z = wagonZ;
     placeCamera();
   }
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

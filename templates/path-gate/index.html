@@ -40,6 +40,14 @@
       color: #1d2a18;
       cursor: pointer;
     }
+    button.hint {
+      animation: hint-bob 0.85s ease-in-out infinite;
+      box-shadow: 0 0 0 5px #ffe08a;
+    }
+    @keyframes hint-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     button:focus-visible { outline: 3px solid #6b3a22; outline-offset: 2px; }
     #turn { background: #6b3a22; color: #fff6ea; min-width: 8.5rem; }
     #sound { min-width: 5.6rem; color: #1d2a18; background: #fffaf0; }
@@ -82,7 +90,7 @@
     <button type="button" id="pause">Pause</button>
     <button type="button" id="reset">Reset</button>
   </footer>
-  <div class="card" id="card">
+  <div class="card" id="card" hidden>
     <div class="panel">
       <h2 id="card-title">Path Gate</h2>
       <p id="card-body"></p>

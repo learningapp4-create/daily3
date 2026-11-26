@@ -217,7 +217,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -361,6 +361,11 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  const teach = mode === "play" && met === 0 && !trip;
+  for (const nest of nests) nest.button.classList.toggle("hint", teach);
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
@@ -369,6 +374,7 @@ function frame(now) {
   clock += mode === "play" ? 0 : dt;
   if (mode === "play") step(dt);
   else if (currentEgg()) currentEgg().position.y = CONFIG.eggY + Math.sin(clock * 3) * 0.05;
+  paintHint();
   placeCamera();
   renderer.render(scene, camera);
 }

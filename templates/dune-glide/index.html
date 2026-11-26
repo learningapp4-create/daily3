@@ -42,6 +42,14 @@
       color: #241c14;
       cursor: pointer;
     }
+    button.hint {
+      animation: hint-bob 0.85s ease-in-out infinite;
+      box-shadow: 0 0 0 5px #ffe08a;
+    }
+    @keyframes hint-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     button:focus-visible { outline: 3px solid #0b6e91; outline-offset: 2px; }
     #left, #right { background: #e07a3d; color: #fffaf0; min-width: 8.5rem; }
     #back { background: #3d6f8f; color: #fffaf0; }
@@ -91,7 +99,7 @@
     <button type="button" id="stop">Stop</button>
     <button type="button" id="right">Right</button>
   </footer>
-  <div class="card" id="card">
+  <div class="card" id="card" hidden>
     <div class="panel">
       <h2 id="card-title">Dune Glide</h2>
       <p id="card-body"></p>

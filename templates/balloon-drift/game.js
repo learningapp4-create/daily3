@@ -320,7 +320,7 @@ function resetPlay() {
 function resetRound() {
   mode = "ready";
   resetPlay();
-  showCard(CONFIG.readyTitle, "Go");
+  begin();
 }
 
 function begin() {
@@ -464,6 +464,13 @@ window.addEventListener("resize", resize);
 resize();
 resetRound();
 
+function paintHint() {
+  const garden = gardens.find((item) => !item.got && !item.missed);
+  const teach = mode === "play" && met === 0 && garden;
+  higherBtn.classList.toggle("hint", Boolean(teach && garden.y > height + CONFIG.band));
+  lowerBtn.classList.toggle("hint", Boolean(teach && garden.y < height - CONFIG.band));
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
@@ -477,6 +484,7 @@ function frame(now) {
     for (const cloud of clouds) cloud.position.x += Math.sin(clock + cloud.position.z) * 0.0008;
     placeCamera();
   }
+  paintHint();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);

@@ -340,7 +340,9 @@ function resetRound() {
   updateButtons();
   paintRings();
   placeBird(rings()[0].radius, 0);
-  showCard(CONFIG.readyTitle, CONFIG.readyBody, "Go");
+  hideCard();
+  mode = "play";
+  updateButtons();
 }
 
 let birdTheta = 0;
@@ -448,7 +450,6 @@ function takeStar(star) {
 }
 
 function showMiss() {
-  goalEl.textContent = "Miss";
   missUntil = performance.now() + 800;
 }
 
@@ -649,12 +650,35 @@ function update(dt) {
   updateButtons();
 }
 
+function paintHint() {
+  const first = mode === "play" && !paused && !hopping && starsGot === 0 && ringIndex === 0;
+  const close = first && starIsClose();
+  let dir = 0;
+  if (first && !close) {
+    let bestAbs = Infinity;
+    for (const star of stars) {
+      if (star.got || star.ring !== ringIndex) continue;
+      const d = angleDelta(starAngle(star), birdTheta);
+      if (Math.abs(d) < bestAbs) {
+        bestAbs = Math.abs(d);
+        dir = d;
+      }
+    }
+    if (dir !== 0) faceSign = dir > 0 ? 1 : -1;
+  }
+  leftBtn.classList.toggle("hint", first && !close && dir < 0);
+  rightBtn.classList.toggle("hint", first && !close && dir > 0);
+  catchBtn.classList.toggle("hint", first && earned && starIsClose());
+  hopInBtn.classList.toggle("hint", mode === "play" && !paused && !hopping && starsGot > 0 && ringIndex === 0);
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   resize();
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt);
+  paintHint();
   renderer.render(scene, camera);
 }
 
